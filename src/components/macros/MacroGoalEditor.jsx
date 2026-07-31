@@ -9,6 +9,19 @@ const MACROS = [
 
 const toNum = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
 const totalCalFromGrams = (g) => g.protein * 4 + g.carbs * 4 + g.fat * 9;
+const gramsFromBasisPcts = (basis, pcts) => ({
+  protein: Math.round((basis * pcts.protein / 100) / 4),
+  carbs:   Math.round((basis * pcts.carbs / 100) / 4),
+  fat:     Math.round((basis * pcts.fat / 100) / 9),
+});
+const pctsFromGrams = (g) => {
+  const t = totalCalFromGrams(g);
+  return t > 0 ? {
+    protein: Math.round((g.protein * 4 / t) * 100),
+    carbs:   Math.round((g.carbs * 4 / t) * 100),
+    fat:     Math.round((g.fat * 9 / t) * 100),
+  } : { protein: 0, carbs: 0, fat: 0 };
+};
 
 export default function MacroGoalEditor({
   initial,
@@ -17,86 +30,75 @@ export default function MacroGoalEditor({
   saveLabel = "Save Macro Goals",
   showCancel = true,
 }) {
+  const initGrams = { protein: initial.protein || 0, carbs: initial.carbs || 0, fat: initial.fat || 0 };
+  const initCal = totalCalFromGrams(initGrams);
+
+  // grams are the single source of truth in both modes; calories always = sum(grams)
+  const [grams, setGrams] = useState(initGrams);
   const [mode, setMode] = useState("grams");
-  const [grams, setGrams] = useState({
-    protein: initial.protein || 0,
-    carbs: initial.carbs || 0,
-    fat: initial.fat || 0,
-  });
-  const [pcts, setPcts] = useState({ protein: 0, carbs: 0, fat: 0 });
-  // calories string is the editable value in Percentages mode
-  const [calories, setCalories] = useState(String(initial.calories || 2000));
+  const [pcts, setPcts] = useState(pctsFromGrams(initGrams));
+  const [calorieBasis, setCalorieBasis] = useState(initCal); // user's intended target (Percentages mode)
+  const [calorieDraft, setCalorieDraft] = useState(String(initCal)); // editable draft while calorie field focused
+  const [calorieFocused, setCalorieFocused] = useState(false);
 
-  // --- Grams mode: calories derived from grams (read-only) ---
-  const gramsCalories = totalCalFromGrams(grams);
-  const gramsPcts = {
-    protein: gramsCalories > 0 ? Math.round((grams.protein * 4 / gramsCalories) * 100) : 0,
-    carbs:   gramsCalories > 0 ? Math.round((grams.carbs * 4 / gramsCalories) * 100) : 0,
-    fat:     gramsCalories > 0 ? Math.round((grams.fat * 9 / gramsCalories) * 100) : 0,
-  };
-
-  // --- Percentages mode: grams derived from calories + pcts (read-only) ---
-  const calTarget = toNum(calories);
-  const pctGrams = {
-    protein: Math.round((calTarget * pcts.protein / 100) / 4),
-    carbs:   Math.round((calTarget * pcts.carbs / 100) / 4),
-    fat:     Math.round((calTarget * pcts.fat / 100) / 9),
-  };
+  const calories = totalCalFromGrams(grams); // always the honest total
+  const gramsPcts = pctsFromGrams(grams);
   const totalPct = pcts.protein + pcts.carbs + pcts.fat;
   const pctOk = totalPct === 100;
 
-  // Effective calorie value for the current mode
-  const effectiveCal = mode === "grams" ? gramsCalories : calTarget;
+  // --- Grams mode: edit grams directly ---
+  const onGramChange = (key, raw) => {
+    const v = Math.max(0, parseInt(raw) || 0);
+    setGrams(g => ({ ...g, [key]: v }));
+  };
+
+  // --- Percentages mode: edit pcts (grams recompute from basis) or calorie target (grams recompute from new basis) ---
+  const onPctChange = (key, raw) => {
+    const v = Math.max(0, parseInt(raw) || 0);
+    const newPcts = { ...pcts, [key]: v };
+    setPcts(newPcts);
+    setGrams(gramsFromBasisPcts(calorieBasis, newPcts));
+  };
+
+  const onCalorieFocus = () => {
+    setCalorieFocused(true);
+    setCalorieDraft(String(calories));
+  };
+  const onCalorieChange = (raw) => {
+    setCalorieDraft(raw);
+    const basis = toNum(raw);
+    setCalorieBasis(basis);
+    setGrams(gramsFromBasisPcts(basis, pcts));
+  };
+  const onCalorieBlur = () => setCalorieFocused(false);
 
   const switchMode = (newMode) => {
     if (newMode === mode) return;
     if (newMode === "percentages") {
-      // Carry the grams-derived total into the editable calorie input
-      setCalories(String(gramsCalories));
-      setPcts({
-        protein: gramsCalories > 0 ? Math.round((grams.protein * 4 / gramsCalories) * 100) : 0,
-        carbs:   gramsCalories > 0 ? Math.round((grams.carbs * 4 / gramsCalories) * 100) : 0,
-        fat:     gramsCalories > 0 ? Math.round((grams.fat * 9 / gramsCalories) * 100) : 0,
-      });
-    } else {
-      // Derive grams from current percentages + calorie target
-      setGrams({
-        protein: Math.round((calTarget * pcts.protein / 100) / 4),
-        carbs:   Math.round((calTarget * pcts.carbs / 100) / 4),
-        fat:     Math.round((calTarget * pcts.fat / 100) / 9),
-      });
+      setPcts(pctsFromGrams(grams));
+      setCalorieBasis(calories);
+      setCalorieDraft(String(calories));
     }
     setMode(newMode);
   };
 
-  const handleMacroChange = (key, raw) => {
-    const v = Math.max(0, parseInt(raw) || 0);
-    if (mode === "grams") setGrams(g => ({ ...g, [key]: v }));
-    else setPcts(p => ({ ...p, [key]: v }));
-  };
-
-  // Validation: only calorie minimum (both modes) + pct total (percentages mode)
-  const caloriesValid = effectiveCal >= 1000;
-  const canSave = caloriesValid && (mode === "grams" || pctOk);
+  const canSave = calories >= 1000 && (mode === "grams" || pctOk);
 
   const handleSave = async () => {
-    if (!caloriesValid) return;
+    if (calories < 1000) return;
     if (mode === "percentages" && !pctOk) return;
-    const saveGrams = mode === "grams"
-      ? { protein: grams.protein, carbs: grams.carbs, fat: grams.fat }
-      : { protein: pctGrams.protein, carbs: pctGrams.carbs, fat: pctGrams.fat };
-    await onSave({ calories: effectiveCal, ...saveGrams });
+    await onSave({ calories, protein: grams.protein, carbs: grams.carbs, fat: grams.fat });
   };
 
   const editableValues = mode === "grams" ? grams : pcts;
-  const readOnlyValues = mode === "grams" ? gramsPcts : pctGrams;
+  const readOnlyValues = mode === "grams" ? gramsPcts : grams;
   const readOnlySuffix = mode === "grams" ? "%" : "g";
   const readOnlyLabel = mode === "grams" ? "of calories" : "in grams";
   const inputSuffix = mode === "grams" ? "g" : "%";
 
   return (
     <div className="space-y-4">
-      {/* Daily calorie target */}
+      {/* Daily calorie target — always reflects sum of grams */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Daily Calorie Target</p>
         {mode === "percentages" ? (
@@ -104,19 +106,21 @@ export default function MacroGoalEditor({
             <input
               type="number"
               inputMode="numeric"
-              value={calories}
-              onChange={e => setCalories(e.target.value)}
+              value={calorieFocused ? calorieDraft : String(calories)}
+              onFocus={onCalorieFocus}
+              onChange={e => onCalorieChange(e.target.value)}
+              onBlur={onCalorieBlur}
               className="w-full text-center text-2xl font-black bg-secondary border-0 rounded-xl py-3 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">cal</span>
           </div>
         ) : (
           <div className="relative w-full text-center text-2xl font-black bg-secondary/60 border-0 rounded-xl py-3 pr-14 text-muted-foreground">
-            {gramsCalories.toLocaleString()}
+            {calories.toLocaleString()}
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold">cal</span>
           </div>
         )}
-        {!caloriesValid && (
+        {calories < 1000 && (
           <p className="text-[11px] text-red-500 mt-1.5 text-center">Daily calorie target should be at least 1000</p>
         )}
       </div>
@@ -151,7 +155,9 @@ export default function MacroGoalEditor({
                   inputMode="numeric"
                   min="0"
                   value={editableValues[m.key]}
-                  onChange={e => handleMacroChange(m.key, e.target.value)}
+                  onChange={e => (mode === "grams"
+                    ? onGramChange(m.key, e.target.value)
+                    : onPctChange(m.key, e.target.value))}
                   className="w-full text-center text-lg font-black bg-card border-0 rounded-lg py-2 pr-8 focus:outline-none focus:ring-1 focus:ring-primary/50"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
