@@ -33,12 +33,12 @@ export default function MacroGoalEditor({
   const initGrams = { protein: initial.protein || 0, carbs: initial.carbs || 0, fat: initial.fat || 0 };
   const initCal = totalCalFromGrams(initGrams);
 
-  // grams are the single source of truth in both modes; calories always = sum(grams)
+  // grams are the single source of truth; calories always = sum(grams)
   const [grams, setGrams] = useState(initGrams);
   const [mode, setMode] = useState("grams");
-  const [pcts, setPcts] = useState(pctsFromGrams(initGrams));
-  const [calorieBasis, setCalorieBasis] = useState(initCal); // user's intended target (Percentages mode)
-  const [calorieDraft, setCalorieDraft] = useState(String(initCal)); // editable draft while calorie field focused
+  const [pcts, setPcts] = useState(pctsFromGrams(initGrams));       // editable in Percentages mode
+  const [calorieBasis, setCalorieBasis] = useState(initCal);         // intended target for pct-driven gram calc
+  const [calorieDraft, setCalorieDraft] = useState(String(initCal)); // draft while calorie field focused
   const [calorieFocused, setCalorieFocused] = useState(false);
 
   const calories = totalCalFromGrams(grams); // always the honest total
@@ -46,13 +46,16 @@ export default function MacroGoalEditor({
   const totalPct = pcts.protein + pcts.carbs + pcts.fat;
   const pctOk = totalPct === 100;
 
-  // --- Grams mode: edit grams directly ---
+  // The percentage ratio used when the calorie target drives gram recalculation
+  const currentRatio = mode === "percentages" ? pcts : pctsFromGrams(grams);
+
+  // --- Edit grams (Grams mode) ---
   const onGramChange = (key, raw) => {
     const v = Math.max(0, parseInt(raw) || 0);
     setGrams(g => ({ ...g, [key]: v }));
   };
 
-  // --- Percentages mode: edit pcts (grams recompute from basis) or calorie target (grams recompute from new basis) ---
+  // --- Edit percentages (Percentages mode) ---
   const onPctChange = (key, raw) => {
     const v = Math.max(0, parseInt(raw) || 0);
     const newPcts = { ...pcts, [key]: v };
@@ -60,6 +63,7 @@ export default function MacroGoalEditor({
     setGrams(gramsFromBasisPcts(calorieBasis, newPcts));
   };
 
+  // --- Edit calorie target (both modes) ---
   const onCalorieFocus = () => {
     setCalorieFocused(true);
     setCalorieDraft(String(calories));
@@ -68,7 +72,7 @@ export default function MacroGoalEditor({
     setCalorieDraft(raw);
     const basis = toNum(raw);
     setCalorieBasis(basis);
-    setGrams(gramsFromBasisPcts(basis, pcts));
+    setGrams(gramsFromBasisPcts(basis, currentRatio));
   };
   const onCalorieBlur = () => setCalorieFocused(false);
 
@@ -77,8 +81,8 @@ export default function MacroGoalEditor({
     if (newMode === "percentages") {
       setPcts(pctsFromGrams(grams));
       setCalorieBasis(calories);
-      setCalorieDraft(String(calories));
     }
+    setCalorieDraft(String(calories));
     setMode(newMode);
   };
 
@@ -98,28 +102,21 @@ export default function MacroGoalEditor({
 
   return (
     <div className="space-y-4">
-      {/* Daily calorie target — always reflects sum of grams */}
+      {/* Daily calorie target — editable in both modes, always reflects sum of rounded grams */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Daily Calorie Target</p>
-        {mode === "percentages" ? (
-          <div className="relative">
-            <input
-              type="number"
-              inputMode="numeric"
-              value={calorieFocused ? calorieDraft : String(calories)}
-              onFocus={onCalorieFocus}
-              onChange={e => onCalorieChange(e.target.value)}
-              onBlur={onCalorieBlur}
-              className="w-full text-center text-2xl font-black bg-secondary border-0 rounded-xl py-3 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">cal</span>
-          </div>
-        ) : (
-          <div className="relative w-full text-center text-2xl font-black bg-secondary/60 border-0 rounded-xl py-3 pr-14 text-muted-foreground">
-            {calories.toLocaleString()}
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold">cal</span>
-          </div>
-        )}
+        <div className="relative">
+          <input
+            type="number"
+            inputMode="numeric"
+            value={calorieFocused ? calorieDraft : String(calories)}
+            onFocus={onCalorieFocus}
+            onChange={e => onCalorieChange(e.target.value)}
+            onBlur={onCalorieBlur}
+            className="w-full text-center text-2xl font-black bg-secondary border-0 rounded-xl py-3 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">cal</span>
+        </div>
         {calories < 1000 && (
           <p className="text-[11px] text-red-500 mt-1.5 text-center">Daily calorie target should be at least 1000</p>
         )}
