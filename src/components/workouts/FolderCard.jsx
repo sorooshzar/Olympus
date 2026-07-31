@@ -24,6 +24,8 @@ export default function FolderCard({
   draggableProps, dragHandleProps, innerRef, isDragging,
   // Collapse override from parent during outer drag
   forceCollapsed = false,
+  // Stagger index for entrance animation
+  entranceIndex = 0,
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const queryClient = useQueryClient();
@@ -75,6 +77,12 @@ export default function FolderCard({
         isDragging ? "shadow-2xl opacity-90 scale-[1.02]" : ""
       }`}
     >
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: entranceIndex * 0.06, ease: [0.16, 1, 0.3, 1] }}
+        style={{ willChange: "transform" }}
+      >
       {/* Folder Header — entire header is the drag handle for the outer list */}
       <div
         {...dragHandleProps}
@@ -137,10 +145,10 @@ export default function FolderCard({
         {isOpen && (
           <motion.div
             key="folder-content"
-            initial={{ height: 0 }}
+            initial={false}
             animate={{ height: "auto" }}
             exit={{ height: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
             <DragDropContext onDragEnd={handleInnerDragEnd}>
@@ -188,6 +196,7 @@ export default function FolderCard({
           </motion.div>
         )}
       </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

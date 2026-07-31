@@ -15,6 +15,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { motion } from "framer-motion";
 import FolderCard from "../components/workouts/FolderCard";
 import WorkoutCard from "../components/workouts/WorkoutCard";
 import CreateDialog from "../components/workouts/CreateDialog";
@@ -232,6 +233,7 @@ function WorkoutsTab({ folders, templates, queryClient, navigate, startWorkout, 
                         dragHandleProps={dragProvided.dragHandleProps}
                         isDragging={dragSnapshot.isDragging}
                         forceCollapsed={isDraggingOuter && !dragSnapshot.isDragging}
+                        entranceIndex={index}
                       />
                     ) : (
                       <div
@@ -244,6 +246,12 @@ function WorkoutsTab({ folders, templates, queryClient, navigate, startWorkout, 
                         }}
                         className={`rounded-lg transition-all ${dragSnapshot.isDragging ? "shadow-xl opacity-95 scale-[1.01]" : ""}`}
                       >
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                          style={{ willChange: "transform" }}
+                        >
                         <WorkoutCard
                           template={item.data}
                           folders={folders}
@@ -255,6 +263,7 @@ function WorkoutsTab({ folders, templates, queryClient, navigate, startWorkout, 
                           onUpdateNotes={handleUpdateNotes}
                           onStart={handleStartWorkout}
                         />
+                        </motion.div>
                       </div>
                     )
                   )}
