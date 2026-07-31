@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import OnboardingFlow from "./OnboardingFlow";
 import WelcomeScreen from "./WelcomeScreen";
-import LoginScreen from "./LoginScreen";
 import SignUpScreen from "./SignUpScreen";
 import UsernameSetupScreen from "./UsernameSetupScreen";
 import { initUserStorage, userStorage } from "@/components/utils/userStorage";
@@ -95,16 +94,7 @@ export default function OnboardingGate({ children }) {
     return (
       <WelcomeScreen
         onGetStarted={() => setStatus("onboarding")}
-        onLogin={() => setStatus("login")}
-      />
-    );
-  }
-
-  if (status === "login") {
-    return (
-      <LoginScreen
-        onBack={() => setStatus("welcome")}
-        onAuthenticated={checkState}
+        onLogin={() => base44.auth.redirectToLogin(window.location.href)}
       />
     );
   }
@@ -116,7 +106,7 @@ export default function OnboardingGate({ children }) {
           setOnboardingAnswers(answers);
           setStatus("signup");
         }}
-        onLoginRequested={() => setStatus("login")}
+        onLoginRequested={() => base44.auth.redirectToLogin(window.location.href)}
       />
     );
   }
