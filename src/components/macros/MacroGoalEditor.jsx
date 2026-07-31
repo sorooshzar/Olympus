@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { Check } from "lucide-react";
 
 const MACROS = [
@@ -9,19 +9,33 @@ const MACROS = [
 
 const toNum = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
 const totalCalFromGrams = (g) => g.protein * 4 + g.carbs * 4 + g.fat * 9;
-const gramsFromBasisPcts = (basis, pcts) => ({
-  protein: Math.round((basis * pcts.protein / 100) / 4),
-  carbs:   Math.round((basis * pcts.carbs / 100) / 4),
-  fat:     Math.round((basis * pcts.fat / 100) / 9),
+
+// Rule A & C: grams from a calorie target + percentage ratio
+const gramsFromCalPcts = (cal, pcts) => ({
+  protein: Math.round((cal * pcts.protein / 100) / 4),
+  carbs:   Math.round((cal * pcts.carbs / 100) / 4),
+  fat:     Math.round((cal * pcts.fat / 100) / 9),
 });
-const pctsFromGrams = (g) => {
-  const t = totalCalFromGrams(g);
-  if (!t || !Number.isFinite(t) || t === 0) return { protein: 0, carbs: 0, fat: 0 };
-  return {
-    protein: Math.round((g.protein * 4 / t) * 100),
-    carbs:   Math.round((g.carbs * 4 / t) * 100),
-    fat:     Math.round((g.fat * 9 / t) * 100),
-  };
+
+// Fix 1: largest remainder method — derived percentages always sum to exactly 100
+const pctsFromGramsLR = (g, cal) => {
+  if (!cal || cal <= 0 || !Number.isFinite(cal)) return { protein: 0, carbs: 0, fat: 0 };
+  const keys = ["protein", "carbs", "fat"];
+  const calsPerG = { protein: 4, carbs: 4, fat: 9 };
+  const floors = {}; const rems = {};
+  let sumFloors = 0;
+  keys.forEach(k => {
+    const raw = (g[k] * calsPerG[k] / cal) * 100;
+    floors[k] = Math.floor(raw);
+    rems[k] = raw - floors[k];
+    sumFloors += floors[k];
+  });
+  let toDistribute = 100 - sumFloors;
+  // highest remainder first; alphabetical tie-break
+  const sorted = keys.slice().sort((a, b) => rems[b] - rems[a] || a.localeCompare(b));
+  let i = 0;
+  while (toDistribute > 0) { floors[sorted[i % 3]] += 1; toDistribute -= 1; i += 1; }
+  return { protein: floors.protein, carbs: floors.carbs, fat: floors.fat };
 };
 
 export default function MacroGoalEditor({
@@ -32,93 +46,56 @@ export default function MacroGoalEditor({
   showCancel = true,
 }) {
   const initGrams = { protein: initial.protein || 0, carbs: initial.carbs || 0, fat: initial.fat || 0 };
-  const initCal = totalCalFromGrams(initGrams);
+  const initCal = initial.calories && initial.calories > 0 ? initial.calories : totalCalFromGrams(initGrams);
 
-  // grams are the single source of truth; calories always = sum(grams)
+  // Three independent states, kept in sync per the rules below
   const [grams, setGrams] = useState(initGrams);
+  const [pcts, setPcts] = useState(pctsFromGramsLR(initGrams, initCal));
+  const [calories, setCalories] = useState(initCal);
+  const [calorieInput, setCalorieInput] = useState(String(initCal)); // text in the calorie field
   const [mode, setMode] = useState("grams");
-  const [pcts, setPcts] = useState(pctsFromGrams(initGrams));          // editable in Percentages mode
-  const [calorieBasis, setCalorieBasis] = useState(initCal);            // intended target for pct-driven gram calc
-  const [calorieInput, setCalorieInput] = useState(String(initCal));    // text shown in the calorie field
 
-  const calories = totalCalFromGrams(grams); // always the honest total
-  const gramsPcts = pctsFromGrams(grams);
   const totalPct = pcts.protein + pcts.carbs + pcts.fat;
   const pctOk = totalPct === 100;
+  const canSave = calories >= 1000 && (mode === "grams" || pctOk);
 
-  // The percentage ratio used when the calorie target drives gram recalculation
-  const currentRatio = mode === "percentages" ? pcts : pctsFromGrams(grams);
-
-  // Debounce timer for calorie-driven gram recalculation (fires after typing pauses)
-  const debounceRef = useRef(null);
-  const clearCalorieDebounce = () => {
-    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
+  // Rule A — calories change (both modes): keep percentages, recalc grams, calories = what user typed
+  const onCalorieChange = (raw) => {
+    setCalorieInput(raw);
+    const basis = toNum(raw);
+    if (!Number.isFinite(basis) || basis <= 0) return; // 0 / empty / NaN → freeze, do nothing
+    setCalories(basis);
+    setGrams(gramsFromCalPcts(basis, pcts)); // pcts unchanged
   };
-  useEffect(() => clearCalorieDebounce, []);
+  const onCalorieBlur = (e) => {
+    const basis = toNum(e.target.value);
+    if (!Number.isFinite(basis) || basis <= 0) setCalorieInput(String(calories)); // revert to committed value
+  };
 
-  // --- Edit grams (Grams mode) ---
+  // Rule B — grams change (Grams mode): recalc calories + percentages (largest remainder)
   const onGramChange = (key, raw) => {
     const v = Math.max(0, parseInt(raw) || 0);
     const ng = { ...grams, [key]: v };
+    const nc = totalCalFromGrams(ng);
     setGrams(ng);
-    setCalorieInput(String(totalCalFromGrams(ng))); // keep calorie field synced to actual
+    setCalories(nc);
+    setPcts(pctsFromGramsLR(ng, nc));
+    setCalorieInput(String(nc));
   };
 
-  // --- Edit percentages (Percentages mode) ---
+  // Rule C — percentages change (Percentages mode): keep calories, recalc grams
   const onPctChange = (key, raw) => {
     const v = Math.max(0, parseInt(raw) || 0);
     const newPcts = { ...pcts, [key]: v };
     setPcts(newPcts);
-    const ng = gramsFromBasisPcts(calorieBasis, newPcts);
-    setGrams(ng);
-    setCalorieInput(String(totalCalFromGrams(ng))); // keep calorie field synced to actual
-  };
-
-  // --- Edit calorie target (both modes) ---
-  // Recalculate grams from the current percentage ratio whenever a valid (>0)
-  // calorie target is typed. Fires debounced (after typing pauses) so values don't
-  // jump mid-keystroke; 0 / empty / NaN freezes grams and reverts the display.
-  const recalcFromCalories = (basis) => {
-    setCalorieBasis(basis);
-    const ng = gramsFromBasisPcts(basis, currentRatio);
-    setGrams(ng);
-    setCalorieInput(String(totalCalFromGrams(ng))); // snap to actual sum of rounded grams
-  };
-
-  const onCalorieChange = (raw) => {
-    setCalorieInput(raw);
-    clearCalorieDebounce();
-    const basis = toNum(raw);
-    if (Number.isFinite(basis) && basis > 0) {
-      debounceRef.current = setTimeout(() => {
-        debounceRef.current = null;
-        recalcFromCalories(basis);
-      }, 400);
-    }
-    // 0 / empty / NaN → frozen (no recalculation)
-  };
-
-  const onCalorieBlur = (e) => {
-    clearCalorieDebounce();
-    const basis = toNum(e.target.value);
-    if (!Number.isFinite(basis) || basis <= 0) {
-      setCalorieInput(String(calories)); // revert to actual, grams untouched
-      return;
-    }
-    recalcFromCalories(basis); // commit immediately on blur
+    setGrams(gramsFromCalPcts(calories, newPcts)); // calories unchanged
   };
 
   const switchMode = (newMode) => {
     if (newMode === mode) return;
-    if (newMode === "percentages") {
-      setPcts(pctsFromGrams(grams));
-      setCalorieBasis(calories);
-    }
-    setCalorieInput(String(calories));
+    if (newMode === "percentages") setPcts(pctsFromGramsLR(grams, calories));
     setMode(newMode);
   };
-
-  const canSave = calories >= 1000 && (mode === "grams" || pctOk);
 
   const handleSave = async () => {
     if (calories < 1000) return;
@@ -127,14 +104,14 @@ export default function MacroGoalEditor({
   };
 
   const editableValues = mode === "grams" ? grams : pcts;
-  const readOnlyValues = mode === "grams" ? gramsPcts : grams;
+  const readOnlyValues = mode === "grams" ? pcts : grams;
   const readOnlySuffix = mode === "grams" ? "%" : "g";
-  const readOnlyLabel = mode === "grams" ? "of calories" : "in grams";
-  const inputSuffix = mode === "grams" ? "g" : "%";
+  const readOnlyLabel  = mode === "grams" ? "of calories" : "in grams";
+  const inputSuffix   = mode === "grams" ? "g" : "%";
 
   return (
     <div className="space-y-4">
-      {/* Daily calorie target — editable in both modes, always reflects sum of rounded grams */}
+      {/* Daily calorie target — editable in both modes */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Daily Calorie Target</p>
         <div className="relative">
@@ -142,6 +119,7 @@ export default function MacroGoalEditor({
             type="text"
             inputMode="numeric"
             value={calorieInput}
+            onFocus={e => e.target.select()}
             onChange={e => onCalorieChange(e.target.value)}
             onBlur={onCalorieBlur}
             className="w-full text-center text-2xl font-black bg-secondary border-0 rounded-xl py-3 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50 no-spinner"
@@ -179,14 +157,14 @@ export default function MacroGoalEditor({
             <div className="flex items-center gap-3">
               <div className="relative flex-1">
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
                   value={editableValues[m.key]}
+                  onFocus={e => e.target.select()}
                   onChange={e => (mode === "grams"
                     ? onGramChange(m.key, e.target.value)
                     : onPctChange(m.key, e.target.value))}
-                  className="w-full text-center text-lg font-black bg-card border-0 rounded-lg py-2 pr-8 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  className="w-full text-center text-lg font-black bg-card border-0 rounded-lg py-2 pr-8 focus:outline-none focus:ring-1 focus:ring-primary/50 no-spinner"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
                   {inputSuffix}
