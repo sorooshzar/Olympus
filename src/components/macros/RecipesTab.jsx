@@ -10,12 +10,6 @@ const CARBS_COLOR = "#00AAFF";
 const FAT_COLOR = "#00CC66";
 const KCAL_COLOR = "#FFD700";
 
-const UNIT_TO_G = { cup: 240, tsp: 5, tbsp: 15, "fl oz": 30, ml: 1, oz: 28.35, lb: 453.6, g: 1 };
-function toGrams(qty, unit, servingSize = 100) {
-  if (unit === "serving") return qty * servingSize;
-  return qty * (UNIT_TO_G[unit] || 1);
-}
-
 function ConfirmDelete({ onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -31,43 +25,81 @@ function ConfirmDelete({ onConfirm, onCancel }) {
   );
 }
 
-function ServingsLogPicker({ recipe, onLog, onClose }) {
+function RecipeLogSheet({ recipe, onLog, onClose }) {
   const totalServings = recipe.servings || 1;
   const [count, setCount] = useState(1);
-  const factor = count / totalServings;
-  const cal = Math.round((recipe.total_calories || 0) * factor);
-  const protein = Math.round((recipe.total_protein || 0) * factor);
-  const carbs = Math.round((recipe.total_carbs || 0) * factor);
-  const fat = Math.round((recipe.total_fat || 0) * factor);
+  const [meal, setMeal] = useState(null);
+
+  const perCal = (recipe.total_calories || 0) / totalServings;
+  const perProtein = (recipe.total_protein || 0) / totalServings;
+  const perCarbs = (recipe.total_carbs || 0) / totalServings;
+  const perFat = (recipe.total_fat || 0) / totalServings;
+
+  const cal = Math.round(perCal * count);
+  const protein = Math.round(perProtein * count * 10) / 10;
+  const carbs = Math.round(perCarbs * count * 10) / 10;
+  const fat = Math.round(perFat * count * 10) / 10;
+
+  const meals = [
+    { key: "breakfast", label: "Breakfast", icon: "🍳" },
+    { key: "lunch", label: "Lunch", icon: "🥗" },
+    { key: "dinner", label: "Dinner", icon: "🍽️" },
+    { key: "snack", label: "Snack", icon: "🍎" },
+  ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
-      <div className="w-full max-w-lg bg-card rounded-t-3xl border-t border-border/40 p-5 space-y-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="w-full max-w-lg bg-card rounded-t-3xl border-t border-border/40 p-5 space-y-4" onClick={e => e.stopPropagation()}>
         <div className="w-9 h-1 bg-muted-foreground/25 rounded-full mx-auto -mt-1" />
         <div className="flex items-center justify-between">
-          <p className="font-bold text-base">{recipe.name}</p>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary">
+          <p className="font-bold text-base truncate">{recipe.icon} {recipe.name}</p>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary shrink-0">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">How many servings?
-          {totalServings > 1 && <span className="ml-1 text-primary font-semibold">({totalServings} total)</span>}
-        </p>
-        <div className="flex items-center justify-center gap-6 py-2">
-          <button onClick={() => setCount(c => Math.max(0.5, +(c - 0.5).toFixed(1)))}
-            className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center text-2xl font-bold">−</button>
-          <span className="text-4xl font-black w-16 text-center">{count}</span>
-          <button onClick={() => setCount(c => +(c + 0.5).toFixed(1))}
-            className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">+</button>
+
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">How many servings?
+            {totalServings > 1 && <span className="ml-1 text-primary font-semibold">({totalServings} total)</span>}
+          </p>
+          <div className="flex items-center justify-center gap-6 py-1">
+            <button onClick={() => setCount(c => Math.max(0.5, +(c - 0.5).toFixed(1)))}
+              className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center text-2xl font-bold">−</button>
+            <span className="text-4xl font-black w-16 text-center">{count}</span>
+            <button onClick={() => setCount(c => Math.min(99, +(c + 0.5).toFixed(1)))}
+              className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">+</button>
+          </div>
         </div>
+
         <div className="flex items-center justify-center gap-3 bg-secondary rounded-xl p-3">
           <span className="text-xs font-black" style={{ color: KCAL_COLOR }}>🔥{cal} kcal</span>
           <span className="text-xs font-bold" style={{ color: PROTEIN_COLOR }}>P:{protein}g</span>
           <span className="text-xs font-bold" style={{ color: CARBS_COLOR }}>C:{carbs}g</span>
           <span className="text-xs font-bold" style={{ color: FAT_COLOR }}>F:{fat}g</span>
         </div>
-        <Button className="w-full h-12 rounded-xl font-bold" onClick={() => onLog(count)}>
-          Log {count} serving{count !== 1 ? "s" : ""}
+        <p className="text-[11px] text-muted-foreground text-center -mt-2">
+          {count} serving{count !== 1 ? "s" : ""} = {cal} cal · P: {protein}g · C: {carbs}g · F: {fat}g
+        </p>
+
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Log to which meal?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {meals.map(m => (
+              <button key={m.key} onClick={() => setMeal(m.key)}
+                className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                  meal === m.key
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-foreground border-border"
+                }`}>
+                <span>{m.icon}</span> {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Button className="w-full h-12 rounded-xl font-bold" disabled={!meal}
+          onClick={() => onLog(count, meal)}>
+          {meal ? `Log to ${meals.find(m => m.key === meal).label}` : "Select a meal"}
         </Button>
       </div>
     </div>
@@ -78,6 +110,10 @@ function RecipeCard({ recipe, onEdit, onDelete, onLog }) {
   const ingredientPreview = (recipe.ingredients || []).slice(0, 3).map(i => i.food_name).join(", ");
   const moreCount = (recipe.ingredients || []).length - 3;
   const servings = recipe.servings || 1;
+  const perCal = Math.round((recipe.total_calories || 0) / servings);
+  const perProtein = Math.round((recipe.total_protein || 0) / servings);
+  const perCarbs = Math.round((recipe.total_carbs || 0) / servings);
+  const perFat = Math.round((recipe.total_fat || 0) / servings);
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
@@ -108,16 +144,14 @@ function RecipeCard({ recipe, onEdit, onDelete, onLog }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-black" style={{ color: KCAL_COLOR }}>🔥{recipe.total_calories || 0}</span>
-        <span className="text-[10px] text-muted-foreground">kcal</span>
-        <span className="text-[10px] font-bold" style={{ color: PROTEIN_COLOR }}>P:{recipe.total_protein || 0}g</span>
-        <span className="text-[10px] font-bold" style={{ color: CARBS_COLOR }}>C:{recipe.total_carbs || 0}g</span>
-        <span className="text-[10px] font-bold" style={{ color: FAT_COLOR }}>F:{recipe.total_fat || 0}g</span>
-        {servings > 1 && <span className="text-[10px] text-muted-foreground">total · {Math.round((recipe.total_calories || 0) / servings)} kcal/serving</span>}
+      <div className="flex items-center gap-2.5">
+        <span className="text-xs font-black" style={{ color: KCAL_COLOR }}>🔥{perCal} kcal</span>
+        <span className="text-[10px] font-bold" style={{ color: PROTEIN_COLOR }}>P:{perProtein}g</span>
+        <span className="text-[10px] font-bold" style={{ color: CARBS_COLOR }}>C:{perCarbs}g</span>
+        <span className="text-[10px] font-bold" style={{ color: FAT_COLOR }}>F:{perFat}g</span>
         <div className="flex-1" />
         <button onClick={() => onLog(recipe)}
-          className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors active:scale-[0.97]">
+          className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-primary/90 transition-colors active:scale-[0.97] shrink-0">
           <Zap className="w-3.5 h-3.5" /> Log
         </button>
       </div>
@@ -152,29 +186,21 @@ export default function RecipesTab({ date, addingMeal, onAdd, onClearMeal }) {
     setDeletingRecipe(null);
   };
 
-  const handleLog = async (recipe, servingCount) => {
-    const mealType = addingMeal || "snack";
+  const handleLog = async (recipe, servingCount, mealType) => {
     const totalServings = recipe.servings || 1;
     const factor = servingCount / totalServings;
-
-    const promises = (recipe.ingredients || []).map(ing => {
-      const grams = toGrams(ing.qty ?? ing.quantity ?? 100, ing.unit ?? "g", ing.food_serving_size);
-      const scaledGrams = grams * factor;
-      const ratio = scaledGrams / 100;
-      return base44.entities.MacroEntry.create({
-        date,
-        meal_type: mealType,
-        food_name: ing.food_name,
-        food_id: ing.food_id,
-        quantity: Math.round(scaledGrams),
-        unit: "g",
-        calories: Math.round((ing.calories_per_100g || 0) * ratio),
-        protein: Math.round((ing.protein_per_100g || 0) * ratio * 10) / 10,
-        carbs: Math.round((ing.carbs_per_100g || 0) * ratio * 10) / 10,
-        fat: Math.round((ing.fat_per_100g || 0) * ratio * 10) / 10,
-      });
+    await base44.entities.MacroEntry.create({
+      date,
+      meal_type: mealType,
+      food_name: recipe.name,
+      food_id: recipe.id,
+      quantity: servingCount,
+      unit: "serving",
+      calories: Math.round((recipe.total_calories || 0) * factor),
+      protein: Math.round((recipe.total_protein || 0) * factor * 10) / 10,
+      carbs: Math.round((recipe.total_carbs || 0) * factor * 10) / 10,
+      fat: Math.round((recipe.total_fat || 0) * factor * 10) / 10,
     });
-    await Promise.all(promises);
     queryClient.invalidateQueries({ queryKey: ["macroEntries", date] });
     if (onClearMeal) onClearMeal();
     setLoggingRecipe(null);
@@ -225,9 +251,9 @@ export default function RecipesTab({ date, addingMeal, onAdd, onClearMeal }) {
       )}
 
       {loggingRecipe && (
-        <ServingsLogPicker
+        <RecipeLogSheet
           recipe={loggingRecipe}
-          onLog={(count) => handleLog(loggingRecipe, count)}
+          onLog={(count, mealType) => handleLog(loggingRecipe, count, mealType)}
           onClose={() => setLoggingRecipe(null)}
         />
       )}
