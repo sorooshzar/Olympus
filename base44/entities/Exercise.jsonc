@@ -38,6 +38,10 @@
       ],
       "description": "Compound (multi-joint) or Isolation (single-joint) movement"
     },
+    "movement_pattern": {
+      "type": "string",
+      "description": "Specific movement pattern for this muscle (e.g. Incline Press, Frontal Pull) \u2014 used for variation matching"
+    },
     "instructions": {
       "type": "string",
       "description": "How to perform the exercise"

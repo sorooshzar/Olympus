@@ -1,0 +1,37 @@
+{
+  "name": "Variation",
+  "type": "object",
+  "properties": {
+    "primary_muscle": {
+      "type": "string",
+      "description": "Primary muscle group this variation targets"
+    },
+    "movement_pattern": {
+      "type": "string",
+      "description": "Movement pattern (e.g. Incline Press, Frontal Pull)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Auto-generated: [primary_muscle] - [movement_pattern] Variation"
+    }
+  },
+  "required": [
+    "primary_muscle",
+    "movement_pattern",
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

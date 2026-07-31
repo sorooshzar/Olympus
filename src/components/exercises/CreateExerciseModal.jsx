@@ -3,8 +3,10 @@ import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Check, ChevronDown } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import { getAllSubSections } from "@/components/utils/muscleHierarchy";
+import { getPatternsForMuscle, getMuscleDisplayLabel } from "@/components/utils/movementPatterns";
+import MuscleMultiSelect from "./MuscleMultiSelect";
 
 const CATEGORIES = ["barbell", "dumbbell", "machine", "smith_machine", "cable", "bodyweight", "other"];
 
@@ -14,12 +16,14 @@ export default function CreateExerciseModal({ open, onClose }) {
   const [secondaryMuscles, setSecondaryMuscles] = useState([]);
   const [category, setCategory] = useState("");
   const [movementType, setMovementType] = useState("");
+  const [movementPattern, setMovementPattern] = useState("");
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
 
   if (!open) return null;
 
   const allMuscles = getAllSubSections();
+  const patterns = getPatternsForMuscle(primaryMuscle);
 
   const handleSave = async () => {
     if (!name.trim() || !primaryMuscle) return;
@@ -30,6 +34,7 @@ export default function CreateExerciseModal({ open, onClose }) {
       secondary_muscles: secondaryMuscles,
       category: category || "other",
       movement_type: movementType || undefined,
+      movement_pattern: movementPattern || undefined,
     });
     queryClient.invalidateQueries({ queryKey: ["exercises"] });
     setSaving(false);
@@ -38,13 +43,8 @@ export default function CreateExerciseModal({ open, onClose }) {
     setSecondaryMuscles([]);
     setCategory("");
     setMovementType("");
+    setMovementPattern("");
     onClose();
-  };
-
-  const toggleSecondary = (muscle) => {
-    setSecondaryMuscles((prev) =>
-      prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle]
-    );
   };
 
   const canSave = name.trim() && primaryMuscle;
@@ -85,13 +85,14 @@ export default function CreateExerciseModal({ open, onClose }) {
                 value={primaryMuscle}
                 onChange={(e) => {
                   setPrimaryMuscle(e.target.value);
+                  setMovementPattern("");
                   setSecondaryMuscles((prev) => prev.filter((m) => m !== e.target.value));
                 }}
                 className="w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm font-medium appearance-none pr-9 focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="">Select primary muscle…</option>
                 {allMuscles.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>{getMuscleDisplayLabel(m)}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -116,14 +117,33 @@ export default function CreateExerciseModal({ open, onClose }) {
             </div>
           </div>
 
-          {/* Movement Type */}
+          {/* Movement Pattern — dependent on primary muscle */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Movement Pattern</label>
+            <div className="relative">
+              <select
+                value={movementPattern}
+                disabled={!primaryMuscle}
+                onChange={(e) => setMovementPattern(e.target.value)}
+                className={`w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm font-medium appearance-none pr-9 focus:outline-none focus:ring-1 focus:ring-primary ${!primaryMuscle ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{primaryMuscle ? "None" : "Select primary muscle first…"}</option>
+                {patterns.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Movement Type (compound/isolation — rest timing) */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Movement Type</label>
             <div className="flex gap-2">
               {["compound", "isolation"].map((type) => (
                 <button
                   key={type}
-                  onClick={() => setMovementType(prev => prev === type ? "" : type)}
+                  onClick={() => setMovementType((prev) => (prev === type ? "" : type))}
                   className={`flex-1 py-2.5 rounded-lg text-sm font-semibold capitalize transition-all ${
                     movementType === type
                       ? "bg-primary text-primary-foreground"
@@ -135,33 +155,16 @@ export default function CreateExerciseModal({ open, onClose }) {
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Compound = multi-joint (presses, rows, deadlifts). Isolation = single-joint (curls, extensions, flyes).
+              Compound = multi-joint. Isolation = single-joint. Used for rest timer defaults.
             </p>
           </div>
 
-          {/* Secondary Muscles — multi-select chips */}
+          {/* Secondary Muscles — dropdown multi-select */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">
-              Secondary Muscles <span className="opacity-60">(optional, select any)</span>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Secondary Muscles <span className="opacity-60">(optional)</span>
             </label>
-            <div className="flex flex-wrap gap-1.5">
-              {allMuscles
-                .filter((m) => m !== primaryMuscle)
-                .map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => toggleSecondary(m)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
-                      secondaryMuscles.includes(m)
-                        ? "bg-primary/20 text-primary border border-primary/40"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/70"
-                    }`}
-                  >
-                    {m}
-                    {secondaryMuscles.includes(m) && <Check className="w-3 h-3" />}
-                  </button>
-                ))}
-            </div>
+            <MuscleMultiSelect value={secondaryMuscles} onChange={setSecondaryMuscles} exclude={primaryMuscle} />
           </div>
         </div>
 

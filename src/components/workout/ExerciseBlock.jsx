@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { MoreVertical, Trash2, GripVertical, StickyNote, RefreshCw, Timer, Link2, Unlink } from "lucide-react";
+import { MoreVertical, Trash2, GripVertical, StickyNote, RefreshCw, Timer, Link2, Unlink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import SetTable from "./SetTable";
+import VariationExercisePicker from "./VariationExercisePicker";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -28,15 +29,22 @@ export default function ExerciseBlock({
   previousSets = [],
   dragHandleProps,
   // Superset actions
-  onMakeSuperset,     // () => void — open superset picker
-  onLeaveSuperset,    // () => void — remove this exercise from its superset
-  accentColor,        // override left border color when inside a SupersetBlock
-  onSetCompleted,     // (set) => void — fires when a set is toggled to completed
+  onMakeSuperset,
+  onLeaveSuperset,
+  accentColor,
+  onSetCompleted,
 }) {
   const [showNotes, setShowNotes] = useState(!!exercise.notes);
   const [showRestEditor, setShowRestEditor] = useState(false);
+  const [showVariationPicker, setShowVariationPicker] = useState(false);
   const navigate = useNavigate();
   const notesDebounceRef = useRef(null);
+
+  const isVariation = exercise.type === "variation";
+  const isUnfilledVariation = isVariation && !exercise.exercise_id;
+  const variationDisplayName = isUnfilledVariation
+    ? `${exercise.primary_muscle} - ${exercise.movement_pattern} Variation`
+    : exercise.exercise_name;
 
   const updateSets = (newSets) => onChange({ ...exercise, sets: newSets });
 
@@ -50,26 +58,44 @@ export default function ExerciseBlock({
     }
   };
 
+  const handleVariationSelect = (selected) => {
+    onChange({
+      ...exercise,
+      exercise_id: selected.id,
+      exercise_name: selected.name,
+      muscle_group: selected.primary_muscle,
+      movement_type: selected.movement_type || null,
+    });
+    setShowVariationPicker(false);
+  };
+
   const borderColor = accentColor || exercise.color || "transparent";
   const isInSuperset = !!exercise.superset_group;
 
   return (
     <div
-      className="bg-card rounded-xl border border-border overflow-hidden transition-shadow"
-      style={{ borderLeftWidth: "3px", borderLeftColor: borderColor }}
+      className={`bg-card rounded-xl overflow-hidden transition-shadow ${isUnfilledVariation ? "border-2 border-dashed border-primary/40" : "border border-border"}`}
+      style={isUnfilledVariation ? undefined : { borderLeftWidth: "3px", borderLeftColor: borderColor }}
     >
       {/* Exercise Header */}
       <div className="flex items-center px-3 py-3 gap-2">
         <div {...(dragHandleProps || {})} className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
           <GripVertical className="w-4 h-4 text-muted-foreground/40" />
         </div>
-        <div className="flex-1 min-w-0">
-          <button
-            className="text-sm font-semibold truncate text-left w-full hover:text-primary transition-colors"
-            onClick={() => exercise.exercise_id && navigate(createPageUrl(`ExerciseDetail?id=${exercise.exercise_id}`))}
-          >
-            {exercise.exercise_name}
-          </button>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+          {isUnfilledVariation ? (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="text-sm font-semibold truncate">{variationDisplayName}</span>
+            </div>
+          ) : (
+            <button
+              className="text-sm font-semibold truncate text-left w-full hover:text-primary transition-colors"
+              onClick={() => exercise.exercise_id && navigate(createPageUrl(`ExerciseDetail?id=${exercise.exercise_id}`))}
+            >
+              {exercise.exercise_name}
+            </button>
+          )}
         </div>
 
         {/* Notes toggle */}
@@ -152,19 +178,38 @@ export default function ExerciseBlock({
         </div>
       )}
 
-      {/* Sets */}
+      {/* Sets / Variation body */}
       <div className="px-2 pb-3">
-        <SetTable
-          sets={exercise.sets || []}
-          onChange={updateSets}
-          isActive={isActive}
-          previousSets={previousSets}
-          onSetCompleted={onSetCompleted}
-          showRestEditor={showRestEditor}
-          onCollapseRest={() => setShowRestEditor(false)}
-          movementType={exercise.movement_type}
-        />
+        {isUnfilledVariation && isActive ? (
+          <button
+            onClick={() => setShowVariationPicker(true)}
+            className="w-full h-12 rounded-xl border-2 border-dashed border-primary/40 text-primary text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            Choose Exercise
+          </button>
+        ) : (
+          <SetTable
+            sets={exercise.sets || []}
+            onChange={updateSets}
+            isActive={isActive}
+            previousSets={previousSets}
+            onSetCompleted={onSetCompleted}
+            showRestEditor={showRestEditor}
+            onCollapseRest={() => setShowRestEditor(false)}
+            movementType={exercise.movement_type}
+          />
+        )}
       </div>
+
+      {showVariationPicker && (
+        <VariationExercisePicker
+          primaryMuscle={exercise.primary_muscle}
+          movementPattern={exercise.movement_pattern}
+          onSelect={handleVariationSelect}
+          onClose={() => setShowVariationPicker(false)}
+        />
+      )}
     </div>
   );
 }

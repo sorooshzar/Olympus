@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { X, Save, Plus, Link2 } from "lucide-react";
+import { X, Save, Plus, Link2, Layers } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ExerciseList from "../components/workout/ExerciseList";
+import AddVariationSheet from "../components/workout/AddVariationSheet";
 import { EXERCISE_SELECTOR_KEY } from "./ExerciseSelector";
 import { createPageUrl } from "@/utils";
 import { createSuperset } from "../components/workout/supersetUtils";
@@ -19,6 +20,7 @@ export default function EditWorkout() {
   const [exercises, setExercises] = useState([]);
   const [saving, setSaving] = useState(false);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+  const [showAddVariation, setShowAddVariation] = useState(false);
   // Multi-select superset mode
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState(new Set());
@@ -252,26 +254,46 @@ export default function EditWorkout() {
         )}
 
         {/* Action buttons */}
-        <div className={`flex gap-2 mt-3 ${selectMode ? "hidden" : ""}`}>
+        <div className={`flex flex-col gap-2 mt-3 ${selectMode ? "hidden" : ""}`}>
           <Button
             variant="outline"
-            className="flex-1 h-12 rounded-xl border-dashed text-muted-foreground"
-            onClick={() => navigate(createPageUrl("ExerciseSelector") + `?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+            className="w-full h-12 rounded-xl border-dashed text-primary border-primary/40 hover:bg-primary/5"
+            onClick={() => setShowAddVariation(true)}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Exercise
+            <Layers className="w-4 h-4 mr-2" />
+            Add Variation
           </Button>
-          {exercises.length >= 2 && (
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              className="h-12 px-4 rounded-xl border-dashed text-violet-400 border-violet-400/40 hover:bg-violet-500/10"
-              onClick={toggleSelectMode}
+              className="flex-1 h-12 rounded-xl border-dashed text-muted-foreground"
+              onClick={() => navigate(createPageUrl("ExerciseSelector") + `?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
             >
-              <Link2 className="w-4 h-4" />
+              <Plus className="w-4 h-4 mr-2" />
+              Add Exercise
             </Button>
-          )}
+            {exercises.length >= 2 && (
+              <Button
+                variant="outline"
+                className="h-12 px-4 rounded-xl border-dashed text-violet-400 border-violet-400/40 hover:bg-violet-500/10"
+                onClick={toggleSelectMode}
+              >
+                <Link2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      <AddVariationSheet
+        open={showAddVariation}
+        onClose={() => setShowAddVariation(false)}
+        onAdd={(variation) => {
+          setExercises((prev) => [...prev, { ...variation, order: prev.length }]);
+          isDirty.current = true;
+          setShowAddVariation(false);
+        }}
+      />
 
       {showUnsavedConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">

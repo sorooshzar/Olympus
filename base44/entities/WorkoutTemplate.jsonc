@@ -36,15 +36,31 @@
     },
     "exercises": {
       "type": "array",
-      "description": "Exercise configurations",
+      "description": "Exercise / variation configurations",
       "items": {
         "type": "object",
         "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "exercise",
+              "variation"
+            ],
+            "description": "Slot type: 'exercise' (a specific exercise) or 'variation' (a flexible slot defined by muscle + movement pattern)"
+          },
           "exercise_id": {
             "type": "string"
           },
           "exercise_name": {
             "type": "string"
+          },
+          "primary_muscle": {
+            "type": "string",
+            "description": "For variation slots: the target primary muscle"
+          },
+          "movement_pattern": {
+            "type": "string",
+            "description": "For variation slots: the target movement pattern"
           },
           "color": {
             "type": "string"
