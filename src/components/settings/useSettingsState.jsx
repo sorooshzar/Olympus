@@ -85,21 +85,29 @@ export function useSettingsState() {
     window.dispatchEvent(new CustomEvent("weightUnitChanged", { detail: { unit: u } }));
   };
 
-  const saveMacros = async () => {
+  const saveMacros = async (vals) => {
+    const c = vals?.calories ?? macroCalories;
+    const p = vals?.protein ?? macroProtein;
+    const cb = vals?.carbs ?? macroCarbs;
+    const f = vals?.fat ?? macroFat;
     setMacroSaving(true);
     await base44.auth.updateMe({
-      daily_calories: macroCalories,
-      daily_protein: macroProtein,
-      daily_carbs: macroCarbs,
-      daily_fat: macroFat,
+      daily_calories: c,
+      daily_protein: p,
+      daily_carbs: cb,
+      daily_fat: f,
     });
-    userStorage.setItem("gym-macro-calories", String(macroCalories));
-    userStorage.setItem("gym-macro-protein", String(macroProtein));
-    userStorage.setItem("gym-macro-carbs", String(macroCarbs));
-    userStorage.setItem("gym-macro-fat", String(macroFat));
+    userStorage.setItem("gym-macro-calories", String(c));
+    userStorage.setItem("gym-macro-protein", String(p));
+    userStorage.setItem("gym-macro-carbs", String(cb));
+    userStorage.setItem("gym-macro-fat", String(f));
     window.dispatchEvent(new CustomEvent("macroGoalsChanged", {
-      detail: { calories: macroCalories, protein: macroProtein, carbs: macroCarbs, fat: macroFat }
+      detail: { calories: c, protein: p, carbs: cb, fat: f }
     }));
+    setMacroCalories(c);
+    setMacroProtein(p);
+    setMacroCarbs(cb);
+    setMacroFat(f);
     setMacroDirty(false);
     setMacroSaving(false);
   };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import MacroGoalEditor from "@/components/macros/MacroGoalEditor";
 
 const ACTIVITY_MULTIPLIERS = {
   sedentary: 1.2,
@@ -44,119 +45,6 @@ function macrosFromCaloriesAndPcts(calories, pPct, cPct, fPct) {
     carbs: Math.round((calories * cPct / 100) / 4),
     fat: Math.round((calories * fPct / 100) / 9),
   };
-}
-
-function calFromGrams(p, c, f) {
-  return Math.round(p * 4 + c * 4 + f * 9);
-}
-
-// Custom macro editor with reactive gram/pct/calorie logic
-function CustomEditor({ initial, onSave, onCancel }) {
-  const [calories, setCalories] = useState(initial.calories);
-  const [protein, setProtein] = useState(initial.protein);
-  const [carbs, setCarbs] = useState(initial.carbs);
-  const [fat, setFat] = useState(initial.fat);
-
-  // Derived percentages (always computed from grams + calories)
-  const totalCal = calFromGrams(protein, carbs, fat);
-  const pPct = totalCal > 0 ? Math.round((protein * 4 / totalCal) * 100) : 0;
-  const cPct = totalCal > 0 ? Math.round((carbs * 4 / totalCal) * 100) : 0;
-  const fPct = totalCal > 0 ? Math.round((fat * 9 / totalCal) * 100) : 0;
-  const totalPct = pPct + cPct + fPct;
-
-  // When user changes grams → update calories to match
-  const handleGramChange = (macro, val) => {
-    const v = Math.max(0, parseInt(val) || 0);
-    if (macro === "protein") { setProtein(v); setCalories(calFromGrams(v, carbs, fat)); }
-    if (macro === "carbs")   { setCarbs(v);   setCalories(calFromGrams(protein, v, fat)); }
-    if (macro === "fat")     { setFat(v);     setCalories(calFromGrams(protein, carbs, v)); }
-  };
-
-  // When user changes calories → keep pcts, scale grams
-  const handleCalorieChange = (val) => {
-    const c = Math.max(0, parseInt(val) || 0);
-    setCalories(c);
-    if (totalCal > 0) {
-      setProtein(Math.round((protein / totalCal) * c / 4) * 4 / 4); // keep ratio
-      const newP = Math.round((pPct / 100) * c / 4);
-      const newC = Math.round((cPct / 100) * c / 4);
-      const newF = Math.round((fPct / 100) * c / 9);
-      setProtein(newP);
-      setCarbs(newC);
-      setFat(newF);
-    }
-  };
-
-  const macros = [
-    { key: "protein", label: "Protein", g: protein, pct: pPct, color: "#ef4444", cal: 4 },
-    { key: "carbs",   label: "Carbs",   g: carbs,   pct: cPct, color: "#eab308", cal: 4 },
-    { key: "fat",     label: "Fat",     g: fat,     pct: fPct, color: "#3b82f6", cal: 9 },
-  ];
-
-  const pctOk = totalPct === 100;
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      {/* Calories */}
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-1.5">🔥 Total Daily Calories</p>
-        <input
-          type="number"
-          value={calories}
-          onChange={e => handleCalorieChange(e.target.value)}
-          className="w-full h-12 rounded-xl bg-secondary px-4 text-xl font-black text-center focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-        <p className="text-xs text-muted-foreground mt-1 text-center">Changing calories scales grams proportionally</p>
-      </div>
-
-      {/* Macros */}
-      {macros.map(m => (
-        <div key={m.key} className="bg-secondary/60 rounded-2xl p-4 space-y-2" style={{ borderLeft: `3px solid ${m.color}` }}>
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold" style={{ color: m.color }}>{m.label}</p>
-            <span className="text-xs font-semibold text-muted-foreground">{m.pct}% of calories</span>
-          </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <p className="text-[10px] text-muted-foreground mb-1">Grams</p>
-              <input
-                type="number" min="0"
-                value={m.g}
-                onChange={e => handleGramChange(m.key, e.target.value)}
-                className="w-full h-10 rounded-lg bg-secondary px-3 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] text-muted-foreground mb-1">Calories from {m.label}</p>
-              <div className="h-10 rounded-lg bg-secondary/50 px-3 flex items-center">
-                <span className="text-sm font-medium text-muted-foreground">{Math.round(m.g * m.cal)} kcal</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {/* Percentage check */}
-      <div className={`rounded-xl px-4 py-2.5 text-center text-xs font-semibold ${pctOk ? "bg-green-500/10 text-green-500" : "bg-orange-500/10 text-orange-400"}`}>
-        {pctOk
-          ? "✓ Macro split adds up to 100%"
-          : `⚠ Currently ${totalPct}% — must equal 100% to save (adjust grams to fix)`}
-      </div>
-
-      <div className="flex gap-3">
-        <button onClick={onCancel} className="flex-1 h-12 rounded-2xl bg-secondary font-semibold text-sm">
-          Cancel
-        </button>
-        <button
-          disabled={!pctOk}
-          onClick={() => onSave({ calories, protein, carbs, fat })}
-          className="flex-1 h-12 rounded-2xl bg-primary text-white font-bold disabled:opacity-40"
-        >
-          Save Custom
-        </button>
-      </div>
-    </motion.div>
-  );
 }
 
 export default function SlideMacros({ answers, updateMany, onNext }) {
@@ -319,10 +207,11 @@ export default function SlideMacros({ answers, updateMany, onNext }) {
           </motion.div>
         ) : (
           <motion.div key="edit" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <CustomEditor
+            <MacroGoalEditor
               initial={{ calories: displayCal, protein: displayP, carbs: displayC, fat: displayF }}
               onSave={handleSaveCustom}
               onCancel={() => setEditing(false)}
+              saveLabel="Save Custom"
             />
           </motion.div>
         )}
