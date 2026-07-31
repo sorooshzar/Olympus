@@ -13,11 +13,31 @@ import VariationExercisePicker from "./VariationExercisePicker";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { getMainGroups, getMainGroupsForSubsection } from "@/components/utils/muscleHierarchy";
 
 
 const EXERCISE_COLORS = [
   null, "#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4",
 ];
+
+// Subtle accent colors per muscle category (Olympus dark-theme palette)
+const MUSCLE_CATEGORY_STYLES = {
+  Chest: "bg-rose-500/15 text-rose-300",
+  Back: "bg-blue-500/15 text-blue-300",
+  Legs: "bg-emerald-500/15 text-emerald-300",
+  Shoulders: "bg-amber-500/15 text-amber-300",
+  Arms: "bg-violet-500/15 text-violet-300",
+  Core: "bg-cyan-500/15 text-cyan-300",
+  Forearms: "bg-slate-500/15 text-slate-300",
+  Neck: "bg-zinc-500/15 text-zinc-300",
+};
+
+const getMuscleCategory = (muscle) => {
+  if (!muscle) return null;
+  const mainGroups = getMainGroups();
+  if (mainGroups.includes(muscle)) return muscle;
+  return getMainGroupsForSubsection(muscle)[0] || null;
+};
 
 export default function ExerciseBlock({
   exercise,
@@ -42,9 +62,6 @@ export default function ExerciseBlock({
 
   const isVariation = exercise.type === "variation";
   const isUnfilledVariation = isVariation && !exercise.exercise_id;
-  const variationDisplayName = isUnfilledVariation
-    ? `${exercise.primary_muscle} - ${exercise.movement_pattern} Variation`
-    : exercise.exercise_name;
 
   const updateSets = (newSets) => onChange({ ...exercise, sets: newSets });
 
@@ -84,9 +101,16 @@ export default function ExerciseBlock({
         </div>
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           {isUnfilledVariation ? (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="text-sm font-semibold truncate">{variationDisplayName}</span>
+            <div className="min-w-0 flex flex-col gap-1 w-full">
+              <span className={`self-start inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                MUSCLE_CATEGORY_STYLES[getMuscleCategory(exercise.primary_muscle)] || "bg-secondary text-muted-foreground"
+              }`}>
+                {exercise.primary_muscle}
+              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="text-sm font-semibold truncate">{exercise.movement_pattern} Variation</span>
+              </div>
             </div>
           ) : (
             <button
