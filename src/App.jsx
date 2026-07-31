@@ -9,6 +9,13 @@ import OnboardingGate from '@/components/onboarding/OnboardingGate';
 import FoodPreview from '@/pages/FoodPreview';
 import ExerciseSelector from '@/pages/ExerciseSelector';
 import Friends from '@/pages/Friends';
+import SettingsAppearance from '@/pages/settings/SettingsAppearance';
+import SettingsUnits from '@/pages/settings/SettingsUnits';
+import SettingsTimers from '@/pages/settings/SettingsTimers';
+import SettingsNutrition from '@/pages/settings/SettingsNutrition';
+import SettingsPreferences from '@/pages/settings/SettingsPreferences';
+import SettingsAdvanced from '@/pages/settings/SettingsAdvanced';
+import SettingsAccount from '@/pages/settings/SettingsAccount';
 import { TabStateProvider } from '@/components/mobile/TabStateManager';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -65,6 +72,55 @@ const AuthenticatedApp = () => {
           <Route path="/Friends" element={
             <RouteContent pageKey="/Friends">
               <Friends />
+            </RouteContent>
+          } />
+          <Route path="/SettingsAppearance" element={
+            <RouteContent pageKey="/SettingsAppearance">
+              <LayoutWrapper currentPageName="SettingsAppearance">
+                <SettingsAppearance />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsUnits" element={
+            <RouteContent pageKey="/SettingsUnits">
+              <LayoutWrapper currentPageName="SettingsUnits">
+                <SettingsUnits />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsTimers" element={
+            <RouteContent pageKey="/SettingsTimers">
+              <LayoutWrapper currentPageName="SettingsTimers">
+                <SettingsTimers />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsNutrition" element={
+            <RouteContent pageKey="/SettingsNutrition">
+              <LayoutWrapper currentPageName="SettingsNutrition">
+                <SettingsNutrition />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsPreferences" element={
+            <RouteContent pageKey="/SettingsPreferences">
+              <LayoutWrapper currentPageName="SettingsPreferences">
+                <SettingsPreferences />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsAdvanced" element={
+            <RouteContent pageKey="/SettingsAdvanced">
+              <LayoutWrapper currentPageName="SettingsAdvanced">
+                <SettingsAdvanced />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsAccount" element={
+            <RouteContent pageKey="/SettingsAccount">
+              <LayoutWrapper currentPageName="SettingsAccount">
+                <SettingsAccount />
+              </LayoutWrapper>
             </RouteContent>
           } />
           <Route path="*" element={
