@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Check } from "lucide-react";
 
 const MACROS = [
@@ -49,6 +49,13 @@ export default function MacroGoalEditor({
   // The percentage ratio used when the calorie target drives gram recalculation
   const currentRatio = mode === "percentages" ? pcts : pctsFromGrams(grams);
 
+  // Debounce timer for calorie-driven gram recalculation (fires after typing pauses)
+  const debounceRef = useRef(null);
+  const clearCalorieDebounce = () => {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
+  };
+  useEffect(() => clearCalorieDebounce, []);
+
   // --- Edit grams (Grams mode) ---
   const onGramChange = (key, raw) => {
     const v = Math.max(0, parseInt(raw) || 0);
@@ -68,19 +75,37 @@ export default function MacroGoalEditor({
   };
 
   // --- Edit calorie target (both modes) ---
-  // While typing, only track the text — do NOT recalculate (prevents mid-type jumping & divide-by-zero).
-  // Recalculate once on blur, and only if the typed value is a valid number > 0.
-  const onCalorieChange = (raw) => setCalorieInput(raw);
-  const onCalorieBlur = (e) => {
-    const basis = toNum(e.target.value);
-    if (!Number.isFinite(basis) || basis <= 0) {
-      setCalorieInput(String(calories)); // 0 / empty / invalid → revert to actual, grams untouched
-      return;
-    }
+  // Recalculate grams from the current percentage ratio whenever a valid (>0)
+  // calorie target is typed. Fires debounced (after typing pauses) so values don't
+  // jump mid-keystroke; 0 / empty / NaN freezes grams and reverts the display.
+  const recalcFromCalories = (basis) => {
     setCalorieBasis(basis);
     const ng = gramsFromBasisPcts(basis, currentRatio);
     setGrams(ng);
     setCalorieInput(String(totalCalFromGrams(ng))); // snap to actual sum of rounded grams
+  };
+
+  const onCalorieChange = (raw) => {
+    setCalorieInput(raw);
+    clearCalorieDebounce();
+    const basis = toNum(raw);
+    if (Number.isFinite(basis) && basis > 0) {
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
+        recalcFromCalories(basis);
+      }, 400);
+    }
+    // 0 / empty / NaN → frozen (no recalculation)
+  };
+
+  const onCalorieBlur = (e) => {
+    clearCalorieDebounce();
+    const basis = toNum(e.target.value);
+    if (!Number.isFinite(basis) || basis <= 0) {
+      setCalorieInput(String(calories)); // revert to actual, grams untouched
+      return;
+    }
+    recalcFromCalories(basis); // commit immediately on blur
   };
 
   const switchMode = (newMode) => {
