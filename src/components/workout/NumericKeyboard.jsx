@@ -33,6 +33,7 @@ export default function NumericKeyboard({ visible, value, onValue, onDone, label
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", stiffness: 420, damping: 38 }}
+          data-kb-root
           className="fixed bottom-0 left-0 right-0 z-[200] bg-card border-t border-border shadow-2xl"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >

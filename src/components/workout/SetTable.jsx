@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useLayoutEffect } from "react";
 import { Check, Plus, Flame, ChevronDown, Trash2, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -94,9 +94,30 @@ function SwipeableSetRow({ children, onRemove }) {
 
 /* ── tappable cell ─────────────────────────────────────── */
 function TapCell({ value, onTap, placeholder = "0", className = "" }) {
+  // Distinguish a clean tap from a swipe/scroll: only fire onTap when the
+  // pointer barely moved between down and up.
+  const downRef = useRef(null);
+
+  const handlePointerDown = (e) => {
+    downRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+  };
+  const handlePointerUp = (e) => {
+    const d = downRef.current;
+    downRef.current = null;
+    if (!d) return;
+    const dist = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+    if (dist < 10 && Date.now() - d.t < 600) {
+      onTap(e);
+    }
+  };
+  const cancel = () => { downRef.current = null; };
+
   return (
     <button
-      onPointerDown={onTap}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={cancel}
+      onPointerCancel={cancel}
       className={`h-9 w-full rounded-lg bg-secondary flex items-center justify-center active:opacity-70 transition-opacity select-none ${className}`}
     >
       <span className="text-sm font-semibold text-foreground">
@@ -114,14 +135,54 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
   const [activeKey, setActiveKey] = useState(null);
   const [kbValue,   setKbValue]   = useState("");
 
-  const openKb = useCallback((setIndex, field, currentValue) => {
+  const activeCellRef = useRef(null);
+
+  const openKb = useCallback((setIndex, field, currentValue, e) => {
     const display = field === "weight"
       ? (currentValue ? String(toDisplay(currentValue)) : "")
       : (currentValue != null && currentValue !== 0 ? String(currentValue) : "");
+    activeCellRef.current = e?.currentTarget || null;
     setActiveKey({ setIndex, field });
     setKbValue(display);
     if (showRestEditor && onCollapseRest) onCollapseRest();
   }, [toDisplay, showRestEditor, onCollapseRest]);
+
+  // When the numeric keyboard opens, scroll the edited cell so it sits
+  // just above the popup regardless of its original position on screen.
+  useLayoutEffect(() => {
+    if (!activeKey) { activeCellRef.current = null; return; }
+    let cancelled = false;
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const cell = activeCellRef.current;
+      if (!cell) return;
+      const kbEl = document.querySelector("[data-kb-root]");
+      const kbHeight = kbEl ? kbEl.getBoundingClientRect().height : 320;
+      const rect = cell.getBoundingClientRect();
+      const viewportH = window.innerHeight;
+      const gap = 12;
+      const targetBottom = viewportH - kbHeight - gap;
+      const delta = rect.bottom - targetBottom;
+      if (Math.abs(delta) < 4) return;
+      // find nearest scrollable ancestor
+      let scroller = null;
+      let node = cell.parentElement;
+      while (node && node !== document.body) {
+        const style = getComputedStyle(node);
+        if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1) {
+          scroller = node;
+          break;
+        }
+        node = node.parentElement;
+      }
+      if (scroller) {
+        scroller.scrollBy({ top: delta, behavior: "smooth" });
+      } else {
+        window.scrollBy({ top: delta, behavior: "smooth" });
+      }
+    });
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
+  }, [activeKey]);
 
   const commitKb = useCallback(() => {
     if (!activeKey) return;
@@ -277,7 +338,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
                     {/* Weight */}
                     <TapCell
                       value={displayWeight}
-                      onTap={() => openKb(index, "weight", set.weight)}
+                      onTap={(e) => openKb(index, "weight", set.weight, e)}
                       placeholder="0"
                       className={isActiveField("weight") ? "ring-1 ring-primary" : set.type === "failure" ? "text-destructive" : ""}
                     />
@@ -285,7 +346,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
                     {/* Reps */}
                     <TapCell
                       value={displayReps}
-                      onTap={() => openKb(index, "reps", set.reps)}
+                      onTap={(e) => openKb(index, "reps", set.reps, e)}
                       placeholder="0"
                       className={isActiveField("reps") ? "ring-1 ring-primary" : ""}
                     />
@@ -293,7 +354,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
                     {/* RIR */}
                     <TapCell
                       value={displayRir}
-                      onTap={() => openKb(index, "rir", set.rir)}
+                      onTap={(e) => openKb(index, "rir", set.rir, e)}
                       placeholder="2"
                       className={isActiveField("rir") ? "ring-1 ring-primary" : ""}
                     />
