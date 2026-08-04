@@ -40,7 +40,16 @@
     },
     "movement_pattern": {
       "type": "string",
-      "description": "Specific movement pattern for this muscle (e.g. Incline Press, Frontal Pull) \u2014 used for variation matching"
+      "description": "Movement pattern classification (e.g. Horizontal Press, Squat, Hip Hinge, Vertical Pull, Elbow Flexion) \u2014 used for variation matching and strength standard grouping"
+    },
+    "is_rankable": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this exercise has strength standard tables for ranking"
+    },
+    "rankable_standard_name": {
+      "type": "string",
+      "description": "Standardized name for strength standard table lookup (only set when is_rankable=true)"
     },
     "instructions": {
       "type": "string",

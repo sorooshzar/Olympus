@@ -5,7 +5,8 @@ import { useActiveWorkout } from "../components/workout/ActiveWorkoutContext";
 import { motion } from "framer-motion";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 import { base44 } from "@/api/base44Client";
-import { RANKS, BASE_THRESHOLDS, MUSCLE_SCALE } from "@/components/utils/rankEngine";
+import { RANKS } from "@/components/utils/rankEngine";
+import { calculateExerciseRank, indexStandards } from "@/components/utils/strengthStandards";
 
 function formatDuration(minutes) {
   if (!minutes) return "—";
@@ -57,46 +58,34 @@ export default function WorkoutSummary() {
       setLoading(true);
       try {
         const user = await base44.auth.me();
-        const bodyWeights = await base44.entities.BodyWeight.filter(
-          { created_by: user.email }, "-date", 1
-        );
+        const [bodyWeights, allExercises, allStandards] = await Promise.all([
+          base44.entities.BodyWeight.filter({ created_by: user.email }, "-date", 1),
+          base44.entities.Exercise.list(),
+          base44.entities.StrengthStandard.list(),
+        ]);
         const rawBW = bodyWeights[0]?.weight;
         const bodyweightKg = (rawBW && rawBW > 0) ? rawBW : 80;
         const userGender = user?.sex || "male";
 
-        // Compute rank for every exercise from its sets
+        // Lookup maps: exercise_id → Exercise meta, standard_name → StrengthStandard
+        const exerciseMap = {};
+        allExercises.forEach(e => { exerciseMap[e.id] = e; });
+        const standardMap = indexStandards(allStandards);
+
+        // Compute rank for every exercise using strength-standard tables.
+        // Non-rankable / no standard / zero-volume exercises get null rank + null score.
         const rankedExercises = (log.exercises || []).map(ex => {
-          // Find best e1RM across all completed working sets
-          let maxE1rm = 0;
-          (ex.sets || []).forEach(s => {
-            if (s.completed && s.type !== "warmup" && s.weight > 0 && s.reps > 0) {
-              const e1rm = s.weight * (1 + s.reps / 30); // Epley
-              if (e1rm > maxE1rm) maxE1rm = e1rm;
-            }
-          });
-
-          if (maxE1rm === 0) return ex; // no working sets — no rank
-
-          // e1RM ratio relative to bodyweight
-          const ratio = maxE1rm / bodyweightKg;
-
-          // Use muscle_group for scale; fall back to generic 0.7
-          const muscle = ex.muscle_group || null;
-          const scale = (muscle && MUSCLE_SCALE[muscle]) ? MUSCLE_SCALE[muscle] : 0.7;
-          const thresholds = BASE_THRESHOLDS.map(t => t * scale);
-
-          // Find rank index
-          let rankIndex = 0;
-          for (let i = 0; i < RANKS.length; i++) {
-            if (ratio >= thresholds[i]) rankIndex = i;
-            else break;
+          const meta = exerciseMap[ex.exercise_id];
+          if (!meta || !meta.is_rankable) {
+            return { ...ex, rank: null, impressiveness_score: null };
           }
-
+          const standard = standardMap[meta.rankable_standard_name];
+          const result = calculateExerciseRank(meta, ex.sets, standard, userGender, bodyweightKg, weightUnit);
           return {
             ...ex,
-            rank: RANKS[rankIndex].name,
-            impressiveness_score: Math.round(ratio * scale * 100) / 100,
-            best_e1rm: Math.round(maxE1rm * 10) / 10,
+            rank: result.rank,
+            impressiveness_score: result.impressiveness_score,
+            best_e1rm: result.best_metric,
           };
         });
 
@@ -106,6 +95,7 @@ export default function WorkoutSummary() {
         base44.functions.invoke("calculateRanks", {
           workoutLogId: log.id,
           userGender,
+          weightUnit,
           exercises: log.exercises,
         }).then(res => {
           if (res?.data?.newMedals?.length > 0) setNewMedals(res.data.newMedals);

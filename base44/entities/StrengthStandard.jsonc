@@ -1,0 +1,111 @@
+{
+  "name": "StrengthStandard",
+  "type": "object",
+  "properties": {
+    "standard_name": {
+      "type": "string",
+      "description": "Standardized exercise name that matches rankable_standard_name on Exercise records"
+    },
+    "exercise_type": {
+      "type": "string",
+      "enum": [
+        "1RM",
+        "reps"
+      ],
+      "description": "1RM for weight-based exercises, reps for bodyweight exercises"
+    },
+    "unit": {
+      "type": "string",
+      "description": "lb for weight-based, reps for bodyweight"
+    },
+    "male_standards": {
+      "type": "array",
+      "description": "Bodyweight bracket thresholds for males",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bodyweight_lb": {
+            "type": "number"
+          },
+          "wood": {
+            "type": "number"
+          },
+          "bronze": {
+            "type": "number"
+          },
+          "silver": {
+            "type": "number"
+          },
+          "gold": {
+            "type": "number"
+          },
+          "emerald": {
+            "type": "number"
+          },
+          "diamond": {
+            "type": "number"
+          },
+          "champion": {
+            "type": "number"
+          },
+          "titan": {
+            "type": "number"
+          },
+          "olympian": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "female_standards": {
+      "type": "array",
+      "description": "Bodyweight bracket thresholds for females",
+      "items": {
+        "type": "object",
+        "properties": {
+          "bodyweight_lb": {
+            "type": "number"
+          },
+          "wood": {
+            "type": "number"
+          },
+          "bronze": {
+            "type": "number"
+          },
+          "silver": {
+            "type": "number"
+          },
+          "gold": {
+            "type": "number"
+          },
+          "emerald": {
+            "type": "number"
+          },
+          "diamond": {
+            "type": "number"
+          },
+          "champion": {
+            "type": "number"
+          },
+          "titan": {
+            "type": "number"
+          },
+          "olympian": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "standard_name",
+    "exercise_type",
+    "unit"
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": true,
+    "delete": true
+  }
+}
