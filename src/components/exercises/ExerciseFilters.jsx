@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, Check, ChevronDown, Crown } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, Crown, Star } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,6 @@ const SORT_OPTIONS = [
   { id: "name", label: "Name (A–Z)" },
   { id: "frequency", label: "Most Performed" },
   { id: "recency", label: "Most Recent" },
-  { id: "favourites", label: "Favourites" },
 ];
 
 export default function ExerciseFilters({ filters, onFiltersChange }) {
@@ -35,6 +34,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
   const muscleCount = (filters.muscleGroups || []).length;
   const eqCount = (filters.equipment || []).length;
   const rankedActive = !!filters.ranked;
+  const favActive = !!filters.favouritesOnly;
 
   return (
     <div className="flex gap-2 items-center">
@@ -152,6 +152,16 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Favourites toggle — star only */}
+      <button
+        onClick={() => onFiltersChange({ ...filters, favouritesOnly: !favActive })}
+        className={`flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
+          favActive ? "border-amber-400/50 bg-amber-400/15 text-amber-400" : "border-border bg-secondary text-muted-foreground"
+        }`}
+      >
+        <Star className="w-3.5 h-3.5" fill={favActive ? "#FFD700" : "none"} strokeWidth={1.5} />
+      </button>
     </div>
   );
 }

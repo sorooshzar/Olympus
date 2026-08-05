@@ -396,6 +396,7 @@ function ExercisesTab() {
     sort: "name",
     subMuscle: submuscleParam || null,
     ranked: false,
+    favouritesOnly: false,
   });
   const [showCreate, setShowCreate] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
@@ -432,7 +433,7 @@ function ExercisesTab() {
   let filtered = exercises.filter(ex => {
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filters.ranked && !ex.is_rankable) return false;
-    if (filters.sort === "favourites" && !ex.is_favourite) return false;
+    if (filters.favouritesOnly && !ex.is_favourite) return false;
     // Direct sub-muscle filter from muscle map click — exact match only
     if (filters.subMuscle) {
       const primary = ex.primary_muscle?.toLowerCase().trim() || "";
@@ -468,7 +469,7 @@ function ExercisesTab() {
     "other": "--",
   };
 
-  const useGroups = !filters.sort || filters.sort === "name" || filters.sort === "favourites";
+  const useGroups = !filters.sort || filters.sort === "name";
   const grouped = {};
   filtered.forEach(ex => {
     const key = useGroups ? (ex.name[0]?.toUpperCase() || "#") : "Results";
