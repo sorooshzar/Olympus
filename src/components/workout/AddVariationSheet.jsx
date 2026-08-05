@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { X, ChevronDown } from "lucide-react";
 import { PATTERN_MUSCLES, getPatternsForMuscle, getMuscleDisplayLabel, buildVariationName } from "@/components/utils/movementPatterns";
+import InfoButton from "@/components/info/InfoButton";
 
 const DEFAULT_SETS = [
   { type: "warmup", weight: 0, reps: 10, rir: 4 },
@@ -59,6 +60,20 @@ export default function AddVariationSheet({ open, onClose, onAdd }) {
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-secondary">
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        <div className="flex justify-start">
+          <InfoButton
+            label="What are Variations?"
+            title="What are Variations?"
+            body={[
+              "Variations are flexible slots in your workout template. Instead of locking in a specific exercise, a variation slot lets you pick a muscle group and movement pattern — and Olympus will suggest exercises that match.",
+              "For example, a 'Horizontal Push' variation might suggest Barbell Bench Press, Dumbbell Bench Press, or Machine Chest Press. You pick the one that feels right on the day.",
+              "This keeps your workouts fresh while staying structured. You always hit the movement pattern you planned, but you can swap in different exercises based on equipment availability, energy, or preference.",
+              "When you reach a variation slot during a workout, tap it to see matching exercises and choose one to log.",
+            ]}
+            className="text-primary"
+          />
         </div>
 
         <div className="space-y-4">

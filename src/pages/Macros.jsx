@@ -11,6 +11,7 @@ import MacrosJournal from "../components/macros/MacrosJournal";
 import MacrosFoods from "../components/macros/MacrosFoods";
 import FoodDetailModal from "../components/macros/FoodDetailModal";
 import PullToRefresh from "../components/mobile/PullToRefresh";
+import FirstVisitTooltip from "@/components/info/FirstVisitTooltip";
 
 // Mini calendar popover
 function MiniCalendar({ date, onSelect, onClose }) {
@@ -212,7 +213,7 @@ export default function Macros() {
     <PullToRefresh onRefresh={handleRefresh}>
     <div className="max-w-lg mx-auto px-4 pb-4">
       {/* Sticky Header with safe area */}
-      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl -mx-4 px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-2 border-b border-border/20">
+      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl -mx-4 px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-2 border-b border-border/20 relative">
       {/* Header row: Title + date picker */}
       <div className="flex items-center justify-between mb-2.5">
         <h1 className="text-xl font-bold tracking-tight">Macros</h1>
@@ -263,6 +264,12 @@ export default function Macros() {
           </button>
           ))}
           </div>
+          <FirstVisitTooltip
+            storageKey="macros"
+            title="Macro Tracking"
+            text="Log foods throughout the day to track your calories and macros. Use the date selector to view different days, and tap the calculator icon for unit conversions."
+            pointerAlign="right"
+          />
           </div>
 
           {tab === "dashboard" && (

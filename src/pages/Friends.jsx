@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import FriendProfileModal from "@/components/friends/FriendProfileModal";
 import AddFriendSheet from "@/components/friends/AddFriendSheet";
 import InboxSheet from "@/components/friends/InboxSheet";
+import FirstVisitTooltip from "@/components/info/FirstVisitTooltip";
 
 function getLevelData(volume) {
   if (!volume || volume <= 0) return { level: 1, xpIntoLevel: 0, xpNeeded: 500, progress: 0 };
@@ -173,7 +174,7 @@ export default function Friends() {
    return (
      <div className="max-w-lg mx-auto min-h-screen bg-background">
        {/* Header */}
-       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border/20 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-3">
+       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border/20 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-3 relative">
          <div className="relative flex items-center justify-between">
            <button
              onClick={() => navigate('/Profile')}
@@ -206,12 +207,18 @@ export default function Friends() {
                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-secondary transition-colors"
              >
                <UserPlus className="w-[18px] h-[18px] text-muted-foreground" />
-             </button>
-           </div>
-         </div>
-       </div>
+               </button>
+               </div>
+               </div>
+               <FirstVisitTooltip
+               storageKey="friends"
+               title="Friends & Leaderboard"
+               text="Add friends by sharing your friend code or entering theirs. Compare lifts, track each other's progress, and compete on the leaderboard. Your friends are ranked by strength level — climb to the top!"
+               pointerAlign="right"
+               />
+               </div>
 
-       {/* Friends list */}
+               {/* Friends list */}
        <div className="px-4 pt-4 pb-10 space-y-2.5">
          {friendsWithXp.length === 0 ? (
            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">

@@ -28,6 +28,7 @@ import RankTester from "../components/profile/RankTester";
 import NutritionRankCard from "../components/macros/NutritionRank";
 import { computeNutritionStreak } from "../components/macros/NutritionRank";
 import ProfilePictureModal from "../components/profile/ProfilePictureModal";
+import FirstVisitTooltip from "@/components/info/FirstVisitTooltip";
 
 
 
@@ -289,7 +290,7 @@ export default function Profile() {
   return (
     <div className="max-w-lg mx-auto px-4 pb-4">
       {/* Sticky header */}
-      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl pt-[calc(1rem+env(safe-area-inset-top))] pb-2 border-b border-border/20 mb-4">
+      <div className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl pt-[calc(1rem+env(safe-area-inset-top))] pb-2 border-b border-border/20 mb-4 relative">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold tracking-tight">Profile</h1>
           <div className="flex items-center gap-1.5">
@@ -306,11 +307,17 @@ export default function Profile() {
              <Link to={createPageUrl("Settings")}>
                <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-secondary transition-colors">
                  <Settings className="w-[18px] h-[18px] text-muted-foreground" />
-               </button>
-             </Link>
-           </div>
-        </div>
-      </div>
+                 </button>
+                 </Link>
+                 </div>
+                 </div>
+                 <FirstVisitTooltip
+                 storageKey="profile"
+                 title="Your Profile"
+                 text="Track your body weight, measurements, and strength stats all in one place. Your body model shows which muscle groups you've built ranked strength in — tap any section to dive deeper."
+                 pointerAlign="left"
+                 />
+                 </div>
 
       <div className="space-y-4">
         {/* Profile info bar — minimalist, clickable */}

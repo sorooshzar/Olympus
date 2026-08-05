@@ -1,4 +1,5 @@
 import React from "react";
+import InfoButton from "@/components/info/InfoButton";
 
 // 10 Level Nutrition Rank System — streak-based
 export const NUTRITION_LEVELS = [
@@ -227,7 +228,18 @@ export default function NutritionRankCard({ streak = 0 }) {
         borderColor: `${levelData.color}44`,
       }}
     >
-      <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3 font-semibold">Nutrition Rank</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Nutrition Rank</p>
+        <InfoButton
+          title="Nutrition Ranks"
+          body={[
+            "Nutrition ranks measure how consistently you hit your macro targets. Each day you log your food, Olympus checks how close you came to your calorie, protein, carb, and fat goals.",
+            "Your rank improves as you build consistent tracking streaks and stay within your target ranges. Hitting your macros within ±10% of your daily goal counts as a successful day.",
+            "Ranks progress from Bronze to Olympian — the higher your consistency, the higher your rank. Missing days or straying far from your targets will slow your progress.",
+            "Track your food daily and stay close to your targets to climb the nutrition ranks.",
+          ]}
+        />
+      </div>
 
       <div className="flex items-center gap-4">
         <NutritionBadge levelData={levelData} size="lg" />

@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
+import FirstVisitTooltip from "@/components/info/FirstVisitTooltip";
 
 const MODES = ["Regular", "Plate", "1RM", "Unit"];
 
@@ -207,7 +208,8 @@ function PlateMode() {
   return (
     <div className="space-y-4">
       {/* Inputs */}
-      <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
+      <div className="bg-card rounded-2xl border border-border p-5 space-y-5 relative">
+        <FirstVisitTooltip storageKey="plateCalc" title="Plate Calculator" text="Enter your target weight and select your bar type. The calculator shows exactly which plates to load on each side, visualized as a side-view of your barbell." arrow="bottom" pointerAlign="right" />
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2.5 block">Bar Type</label>
           <div className="grid grid-cols-3 gap-2">
@@ -330,7 +332,8 @@ function OneRMMode() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+      <div className="bg-card rounded-2xl border border-border p-5 space-y-3 relative">
+        <FirstVisitTooltip storageKey="oneRmCalc" title="1RM Calculator" text="Enter a weight you can lift and how many reps you did. The calculator estimates your one-rep max using the Epley formula — great for tracking strength without maxing out." arrow="bottom" pointerAlign="right" />
         <div>
           <label className="text-sm font-semibold mb-2 block">Weight ({weightUnit})</label>
           <input type="number" value={weight} onChange={e => setWeight(e.target.value)}
