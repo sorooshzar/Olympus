@@ -87,9 +87,7 @@
   "rls": {
     "create": true,
     "read": true,
-    "update": {
-      "created_by": "{{user.email}}"
-    },
+    "update": true,
     "delete": {
       "created_by": "{{user.email}}"
     }
