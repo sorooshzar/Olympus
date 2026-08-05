@@ -103,7 +103,7 @@ export default function ExerciseBlock({
       }`}
       style={
         isUnfilledVariation && exercise.color
-          ? { borderRightWidth: "3px", borderRightStyle: "solid", borderRightColor: exercise.color }
+          ? { borderLeftWidth: "3px", borderLeftStyle: "solid", borderLeftColor: exercise.color }
           : isUnfilledVariation
             ? undefined
             : { borderLeftWidth: "3px", borderLeftColor: borderColor }
