@@ -56,7 +56,7 @@ export function TimerStepper({ value, onChange, min = 15, max = 600, step = 15 }
   );
 }
 
-export function SettingsPageShell({ title, children }) {
+export function SettingsPageShell({ title, children, headerRight }) {
   return (
     <div className="max-w-lg mx-auto px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-12">
       <div className="flex items-center gap-3 mb-4">
@@ -65,7 +65,8 @@ export function SettingsPageShell({ title, children }) {
             <ChevronLeft className="w-5 h-5" />
           </button>
         </Link>
-        <h1 className="text-xl font-bold">{title}</h1>
+        <h1 className="text-xl font-bold flex-1">{title}</h1>
+        {headerRight}
       </div>
       {children}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { userStorage } from "@/components/utils/userStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,8 @@ import { ArrowLeft, Plus, History, X, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
+import { useGoalWeight, weeksLabel } from "@/components/utils/useGoalWeight";
+import TimelineSelect from "@/components/utils/TimelineSelect";
 
 const BODY_PARTS = [
   "Height", "Neck", "Shoulders", "Chest", "Upper Arm", "Forearm",
@@ -128,16 +130,15 @@ function HeightLogInput({ value, onChange, isImperial }) {
   );
 }
 
-// Goal weight panel
+// Goal weight panel — uses the shared useGoalWeight hook so the goal weight +
+// timeline are synced server-side with the Profile stats page.
 function GoalWeightPanel({ isImperial }) {
-  const queryClient = useQueryClient();
-  const [goalKg, setGoalKg] = useState(() => {
-    const s = userStorage.getItem("gym-goal-weight");
-    return s ? parseFloat(s) : null;
-  });
+  const { goalKg, weeks, saveGoal } = useGoalWeight();
   const [goalInput, setGoalInput] = useState("");
-  const [weeks, setWeeks] = useState(() => parseInt(userStorage.getItem("gym-goal-weeks") || "12"));
+  const [editWeeks, setEditWeeks] = useState(weeks);
   const [editing, setEditing] = useState(false);
+
+  useEffect(() => { setEditWeeks(weeks); }, [weeks]);
 
   const { data: bodyWeights = [] } = useQuery({
     queryKey: ["bodyWeights"],
@@ -148,7 +149,6 @@ function GoalWeightPanel({ isImperial }) {
   });
 
   const currentKg = bodyWeights[0]?.weight;
-
   const displayGoal = goalKg
     ? isImperial ? `${(goalKg * 2.20462).toFixed(1)} lbs` : `${goalKg} kg`
     : null;
@@ -165,18 +165,15 @@ function GoalWeightPanel({ isImperial }) {
     const val = parseFloat(goalInput);
     if (!val) return;
     const kg = isImperial ? +(val / 2.20462).toFixed(2) : val;
-    setGoalKg(kg);
-    userStorage.setItem("gym-goal-weight", String(kg));
-    userStorage.setItem("gym-goal-weeks", String(weeks));
-    // Also update user profile so macros recalculate
-    base44.auth.updateMe({ goal_weight_kg: kg, goal_timeline_weeks: weeks }).catch(() => {});
-    window.dispatchEvent(new CustomEvent("goalWeightChanged", { detail: { goalWeightKg: kg, weeks } }));
+    saveGoal(kg, editWeeks);
     setEditing(false);
     setGoalInput("");
   };
 
-  const TIMELINE_OPTIONS = [4, 8, 12, 16, 24, 52];
-  const weeksLabel = (w) => w >= 52 ? "1 year" : w >= 24 ? "6 months" : `${w} weeks`;
+  const handleClear = () => {
+    saveGoal(null, editWeeks);
+    setEditing(false);
+  };
 
   return (
     <div className="bg-card rounded-xl border border-border p-4 mb-4">
@@ -224,20 +221,12 @@ function GoalWeightPanel({ isImperial }) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1.5">Timeline</p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {TIMELINE_OPTIONS.map(w => (
-                <button key={w} onClick={() => setWeeks(w)}
-                  className={`py-1.5 rounded-lg text-xs font-semibold ${weeks === w ? "bg-primary text-white" : "bg-secondary"}`}>
-                  {weeksLabel(w)}
-                </button>
-              ))}
-            </div>
+            <TimelineSelect value={editWeeks} onChange={setEditWeeks} />
           </div>
           <div className="flex gap-2">
             <Button size="sm" className="flex-1" onClick={handleSave} disabled={!goalInput}>Save</Button>
             {goalKg && (
-              <Button size="sm" variant="ghost" className="text-destructive"
-                onClick={() => { setGoalKg(null); userStorage.removeItem("gym-goal-weight"); base44.auth.updateMe({ goal_weight_kg: null }).catch(() => {}); window.dispatchEvent(new CustomEvent("goalWeightChanged")); setEditing(false); }}>
+              <Button size="sm" variant="ghost" className="text-destructive" onClick={handleClear}>
                 Clear
               </Button>
             )}

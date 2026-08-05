@@ -18,6 +18,8 @@ import AddTrackerModal from "../components/profile/AddTrackerModal";
 import { MeasurementTracker, ExerciseTracker, HabitsTracker, MacrosTracker } from "../components/profile/TrackerWidgets";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 import { userStorage } from "@/components/utils/userStorage";
+import { useGoalWeight } from "@/components/utils/useGoalWeight";
+import TimelineSelect from "@/components/utils/TimelineSelect";
 import { computeRecovery } from "@/components/utils/recoveryEngine";
 import { computeMuscleRanks } from "@/components/utils/rankEngine";
 
@@ -164,11 +166,9 @@ export default function Profile() {
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [showGoalInput, setShowGoalInput] = useState(false);
   const [goalWeightInput, setGoalWeightInput] = useState("");
-  // goalWeight is stored in kg (base unit)
-  const [goalWeight, setGoalWeight] = useState(() => {
-    const saved = userStorage.getItem("gym-goal-weight");
-    return saved ? parseFloat(saved) : null;
-  });
+  const [goalWeeks, setGoalWeeks] = useState(12);
+  const { goalKg: goalWeight, weeks: hookWeeks, saveGoal } = useGoalWeight();
+  useEffect(() => { setGoalWeeks(hookWeeks); }, [hookWeeks]);
 
 
   const [activeTab, setActiveTab] = useState("rank");
@@ -181,22 +181,11 @@ export default function Profile() {
   useEffect(() => {
     base44.auth.me().then(u => {
       setUser(u);
-      // Sync goal weight from profile if not already in localStorage
-      if (u?.goal_weight_kg && !userStorage.getItem("gym-goal-weight")) {
-        setGoalWeight(u.goal_weight_kg);
-        userStorage.setItem("gym-goal-weight", String(u.goal_weight_kg));
-      }
     }).catch(() => {});
     const saved = localStorage.getItem("gym-dark-mode");
     setDarkMode(saved === null ? true : saved === "true");
     const savedTheme = localStorage.getItem("gym-theme");
     if (savedTheme) applyTheme(savedTheme);
-    const handler = (e) => {
-      const kg = e.detail?.goalWeightKg || parseFloat(userStorage.getItem("gym-goal-weight")) || null;
-      setGoalWeight(kg);
-    };
-    window.addEventListener("goalWeightChanged", handler);
-    return () => window.removeEventListener("goalWeightChanged", handler);
   }, []);
 
   const toggleDark = (v) => {
@@ -398,7 +387,7 @@ export default function Profile() {
             </div>
           </div>
           {showGoalInput && (
-            <div className="mb-3">
+            <div className="mb-3 space-y-2">
               <div className="flex gap-2 items-center">
                 <Input type="number" step="0.1"
                   placeholder={goalWeight ? `Current: ${toDisplay(goalWeight)}${weightUnit}` : `Goal weight (${weightUnit})`}
@@ -406,13 +395,14 @@ export default function Profile() {
                   className="h-8 text-sm bg-secondary border-0 flex-1" />
                 <Button size="sm" className="h-8 px-3 text-xs" onClick={() => {
                   const val = parseFloat(goalWeightInput);
-                  if (val) { const kgVal = toKg(val); setGoalWeight(kgVal); userStorage.setItem("gym-goal-weight", String(kgVal)); }
+                  if (val) { const kgVal = toKg(val); saveGoal(kgVal, goalWeeks); }
                   setShowGoalInput(false); setGoalWeightInput("");
                 }}>Set</Button>
                 {goalWeight && <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-destructive" onClick={() => {
-                  setGoalWeight(null); userStorage.removeItem("gym-goal-weight"); setShowGoalInput(false);
+                  saveGoal(null, goalWeeks); setShowGoalInput(false);
                 }}>Clear</Button>}
               </div>
+              <TimelineSelect value={goalWeeks} onChange={setGoalWeeks} />
             </div>
           )}
           <WeightChart data={bodyWeights} goalWeight={goalWeight} />

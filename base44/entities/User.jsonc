@@ -99,6 +99,18 @@
     "daily_fat": {
       "type": "number"
     },
+    "goal_weight_kg": {
+      "type": "number",
+      "description": "Target body weight in kg (server-side, synced across pages)"
+    },
+    "goal_timeline_weeks": {
+      "type": "number",
+      "description": "Target timeline in weeks to reach goal weight"
+    },
+    "bmr": {
+      "type": "number",
+      "description": "Calculated Basal Metabolic Rate (Mifflin-St Jeor)"
+    },
     "weight_unit": {
       "type": "string",
       "enum": [
