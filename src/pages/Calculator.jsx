@@ -7,16 +7,34 @@ import { useWeightUnit } from "@/components/utils/useWeightUnit";
 
 const MODES = ["Regular", "Plate", "1RM", "Unit"];
 
-// IPF Standard Plate Colors
+// Plate colors (side-view pills)
 const PLATE_COLORS = {
-  55: "#C41E3A", // Red (55lb)
-  45: "#0047AB", // Blue (45lb)
-  35: "#FFD700", // Yellow (35lb)
-  25: "#228B22", // Green (25lb)
-  10: "#FFFFFF", // White (10lb)
-  5: "#FF0000",  // Red (5lb)
-  2.5: "#0047AB", // Blue (2.5lb)
+  55: "#ef4444",  // red
+  45: "#3b82f6",  // blue
+  35: "#eab308",  // yellow
+  25: "#22c55e",  // green
+  10: "#f8fafc",  // white
+  5:  "#f97316",  // orange
+  2.5: "#a855f7", // purple
 };
+
+// Dark-colored plates use white text; light-colored plates use dark text
+const PLATE_TEXT_LIGHT = new Set([55, 45, 5, 2.5]);
+
+// Proportional sizing relative to the 45 lb plate (100%).
+// Base: max width 220px, 45 lb thickness 30px (55 lb maxes at 36px).
+const PLATE_PROPORTIONS = {
+  55:  { width: 1.00, thickness: 1.20 },
+  45:  { width: 1.00, thickness: 1.00 },
+  35:  { width: 0.82, thickness: 0.80 },
+  25:  { width: 0.78, thickness: 0.65 },
+  10:  { width: 0.52, thickness: 0.42 },
+  5:   { width: 0.40, thickness: 0.28 },
+  2.5: { width: 0.34, thickness: 0.20 },
+};
+const PLATE_MAX_WIDTH = 220;
+const PLATE_BASE_THICKNESS = 30;
+const PLATE_MIN_THICKNESS = 20; // keeps labels readable on the thinnest pills
 
 const BAR_TYPES = {
   standard: { name: "Standard Barbell", weight_kg: 20, weight_lbs: 45, plates: [45, 35, 25, 10, 5, 2.5] },
@@ -185,7 +203,6 @@ function PlateMode() {
   };
 
   const result = calculatePlates();
-  const plateHeights = { 55: 28, 45: 28, 35: 24, 25: 21, 10: 18, 5: 16, 2.5: 16 };
 
   return (
     <div className="space-y-4">
@@ -236,32 +253,49 @@ function PlateMode() {
             </div>
           </div>
 
-          {/* Plate visualization */}
-          <div className="flex items-end justify-center gap-1 py-2 min-h-[36px]">
-            {result.breakdown.flatMap((p, idx) =>
-              [...Array(p.count)].map((_, i) => (
-                <div key={`${idx}-${i}`}
-                  style={{ width: "14px", height: `${plateHeights[p.plate]}px`, backgroundColor: PLATE_COLORS[p.plate], border: p.plate === 10 ? "1px solid hsl(var(--border))" : "none", borderRadius: "6px" }}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Per-side breakdown */}
+          {/* Plate visualization — side-view barbell sleeve */}
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Per Side</p>
-            <div className="space-y-2">
-              {result.breakdown.map(p => (
-                <div key={p.plate} className="flex items-center gap-3 bg-secondary/50 rounded-xl px-3 py-2.5">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[11px]" style={{ backgroundColor: PLATE_COLORS[p.plate], color: p.plate === 10 ? "#000" : "#fff" }}>{p.plate}</div>
-                  <span className="flex-1 text-sm font-semibold">{p.count} × {p.plate} {weightUnit}</span>
-                  <span className="text-sm text-muted-foreground font-medium">{(p.count * p.plate).toFixed(p.plate < 10 ? 1 : 0)} {weightUnit}</span>
-                </div>
-              ))}
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 text-center">
+              Per Side · {result.sideWeight.toFixed(1)} {weightUnit}
+            </p>
+            <div className="flex flex-col items-center gap-1.5 py-1">
+              {result.breakdown.flatMap((p, idx) =>
+                [...Array(p.count)].map((_, i) => {
+                  const { width, thickness } = PLATE_PROPORTIONS[p.plate];
+                  const w = PLATE_MAX_WIDTH * width;
+                  const h = Math.max(PLATE_BASE_THICKNESS * thickness, PLATE_MIN_THICKNESS);
+                  const radius = Math.min(h / 2, 9);
+                  const isLight = !PLATE_TEXT_LIGHT.has(p.plate);
+                  return (
+                    <div key={`${idx}-${i}`}
+                      style={{
+                        width: `${w}px`,
+                        height: `${h}px`,
+                        backgroundColor: PLATE_COLORS[p.plate],
+                        border: p.plate === 10 ? "1px solid hsl(var(--border))" : "none",
+                        borderRadius: `${radius}px`,
+                      }}
+                      className="flex items-center justify-center font-bold text-[10px] tracking-tight shadow-sm"
+                    >
+                      <span style={{ color: isLight ? "#0a0a0a" : "#ffffff" }} className="leading-none whitespace-nowrap">
+                        {p.plate} {weightUnit}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
             </div>
-            {result.remainder > 0 && (
-              <p className="text-xs text-amber-500 mt-2 text-center">Can't load exact weight — {result.remainder.toFixed(2)} {weightUnit} left per side.</p>
-            )}
+            {result.remainder > 0 && (() => {
+              const targetNum = parseFloat(target);
+              const closest = targetNum - result.remainder * 2;
+              const delta = closest - targetNum;
+              const abs = Math.abs(delta).toFixed(delta % 1 ? 1 : 0);
+              return (
+                <p className="text-xs text-amber-500 mt-3 text-center">
+                  Closest: {closest.toFixed(closest % 1 ? 1 : 0)} {weightUnit} ({abs} {weightUnit} {delta < 0 ? "under" : "over"})
+                </p>
+              );
+            })()}
           </div>
         </div>
       ) : target && result && result.breakdown.length === 0 ? (
