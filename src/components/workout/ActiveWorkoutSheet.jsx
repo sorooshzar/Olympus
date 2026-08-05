@@ -40,6 +40,7 @@ export default function ActiveWorkoutSheet() {
   const dragStartY = useRef(null);
   const { start: startRestTimer } = useRestTimer();
   const sheetRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const miniBarDragStart = useRef(null);
   const notesInitializedFor = useRef(null);
 
@@ -118,17 +119,26 @@ export default function ActiveWorkoutSheet() {
   // Read back exercises chosen in ExerciseSelector page
   useEffect(() => {
     const raw = localStorage.getItem(EXERCISE_SELECTOR_KEY);
-    if (!raw) return;
-    localStorage.removeItem(EXERCISE_SELECTOR_KEY);
-    try {
-      const parsed = JSON.parse(raw);
-      // New format: { exercises, asSuperset }; legacy format: array
-      const list = Array.isArray(parsed) ? parsed : (parsed.exercises || []);
-      const asSuperset = !Array.isArray(parsed) && parsed.asSuperset;
-      if (list.length > 0) {
-        addExercisesToWorkout(list, asSuperset);
-      }
-    } catch {}
+    if (raw) {
+      localStorage.removeItem(EXERCISE_SELECTOR_KEY);
+      try {
+        const parsed = JSON.parse(raw);
+        // New format: { exercises, asSuperset }; legacy format: array
+        const list = Array.isArray(parsed) ? parsed : (parsed.exercises || []);
+        const asSuperset = !Array.isArray(parsed) && parsed.asSuperset;
+        if (list.length > 0) {
+          addExercisesToWorkout(list, asSuperset);
+        }
+      } catch {}
+    }
+    // After returning from the ExerciseSelector (add or cancel), scroll to the
+    // bottom so the user lands on the exercise they just added.
+    if (sessionStorage.getItem("exerciseSelector_returnScroll") === "1") {
+      sessionStorage.removeItem("exerciseSelector_returnScroll");
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: "smooth" });
+      }, 350);
+    }
   }, [location.pathname, addExercisesToWorkout]);
 
   const formatTime = (secs) => {
@@ -313,7 +323,7 @@ export default function ActiveWorkoutSheet() {
         </div>
 
         {/* Exercises — scrollable with DnD reorder */}
-        <div className="flex-1 overflow-y-auto pt-4 pb-8">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 pb-8">
           <div className="max-w-lg mx-auto px-4">
             <ExerciseList
               exercises={workout.exercises}

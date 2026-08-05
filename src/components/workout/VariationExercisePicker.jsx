@@ -1,9 +1,13 @@
-import React, { useState } from "react";
-import { X, Search, Library } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { X, Search, Library, Star, Plus } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useExercises } from "@/components/hooks/useWorkoutData";
 import { getMuscleDisplayLabel } from "@/components/utils/movementPatterns";
 import { getMainGroupsForSubsection } from "@/components/utils/muscleHierarchy";
+import CreateExerciseModal from "@/components/exercises/CreateExerciseModal";
 
 // Two primary_muscle values are in the same family if they are equal or share a
 // parent muscle group (e.g. "Mid/Low Chest" and "Upper Chest" → both "Chest").
@@ -17,7 +21,29 @@ function sameMuscleFamily(a, b) {
 
 export default function VariationExercisePicker({ primaryMuscle, movementPattern, onSelect, onClose }) {
   const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
   const { data: exercises = [], isLoading } = useExercises();
+  const queryClient = useQueryClient();
+
+  // Muscles valid for this movement pattern = primary_muscles already used by
+  // exercises sharing this pattern, plus the variation's own target muscle.
+  const allowedMuscles = useMemo(() => {
+    const fromExercises = exercises
+      .filter((ex) => (ex.movement_pattern || "") === movementPattern)
+      .map((ex) => ex.primary_muscle)
+      .filter(Boolean);
+    const set = new Set(fromExercises);
+    if (primaryMuscle) set.add(primaryMuscle);
+    return Array.from(set);
+  }, [exercises, movementPattern, primaryMuscle]);
+
+  const toggleFavourite = (e, ex) => {
+    e.stopPropagation();
+    queryClient.setQueryData(["exercises"], (old) =>
+      old ? old.map((x) => (x.id === ex.id ? { ...x, is_favourite: !x.is_favourite } : x)) : old
+    );
+    base44.entities.Exercise.update(ex.id, { is_favourite: !ex.is_favourite });
+  };
 
   // PRIMARY match: exact movement_pattern equality (string === string). Muscle
   // group is a sort priority only — never a hard filter — so the user always
@@ -47,6 +73,9 @@ export default function VariationExercisePicker({ primaryMuscle, movementPattern
               {getMuscleDisplayLabel(primaryMuscle)} · {movementPattern}
             </p>
           </div>
+          <Button size="sm" onClick={() => setShowCreate(true)} className="gap-1 h-8 px-3 rounded-lg text-xs shrink-0">
+            <Plus className="w-3.5 h-3.5" /> New
+          </Button>
         </div>
       </div>
 
@@ -78,10 +107,10 @@ export default function VariationExercisePicker({ primaryMuscle, movementPattern
         ) : (
           <div className="space-y-1">
             {filtered.map((ex) => (
-              <button
+              <div
                 key={ex.id}
                 onClick={() => onSelect(ex)}
-                className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 text-left transition-colors"
+                className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 text-left transition-colors cursor-pointer"
               >
                 <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 text-xs font-bold text-muted-foreground uppercase">
                   {(ex.category || "--").slice(0, 2)}
@@ -92,11 +121,25 @@ export default function VariationExercisePicker({ primaryMuscle, movementPattern
                     {ex.primary_muscle}{ex.movement_pattern ? ` · ${ex.movement_pattern}` : ""}
                   </p>
                 </div>
-              </button>
+                <button
+                  onClick={(e) => toggleFavourite(e, ex)}
+                  className="p-1 rounded-lg hover:bg-secondary transition-colors flex-shrink-0"
+                >
+                  <Star className={`w-4 h-4 ${ex.is_favourite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`} />
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      <CreateExerciseModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        lockedMovementPattern={movementPattern}
+        allowedMuscles={allowedMuscles}
+        defaultMuscle={primaryMuscle}
+      />
     </div>
   );
 }

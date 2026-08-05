@@ -27,6 +27,12 @@ export default function ExerciseSelector() {
 
   const params = new URLSearchParams(location.search);
   const returnTo = params.get("returnTo") || "/";
+  // When returning to a workout view, signal it to scroll to the bottom so the
+  // user lands on the exercise they just added (or where they left off on cancel).
+  const returnIsWorkoutView = /EditWorkout|ActiveWorkout/.test(returnTo);
+  const flagReturnScroll = () => {
+    if (returnIsWorkoutView) sessionStorage.setItem("exerciseSelector_returnScroll", "1");
+  };
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]); // array of exercise objects in selection order
@@ -91,11 +97,13 @@ export default function ExerciseSelector() {
 
   const handleConfirm = (asSuperset = false) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ exercises: selected, asSuperset }));
+    flagReturnScroll();
     navigate(returnTo);
   };
 
   const handleCancel = () => {
     localStorage.removeItem(STORAGE_KEY);
+    flagReturnScroll();
     navigate(returnTo);
   };
 

@@ -10,19 +10,23 @@ import MuscleMultiSelect from "./MuscleMultiSelect";
 
 const CATEGORIES = ["barbell", "dumbbell", "machine", "smith_machine", "cable", "bodyweight", "other"];
 
-export default function CreateExerciseModal({ open, onClose }) {
+export default function CreateExerciseModal({ open, onClose, lockedMovementPattern, allowedMuscles, defaultMuscle }) {
+  const isPatternLocked = !!lockedMovementPattern;
   const [name, setName] = useState("");
-  const [primaryMuscle, setPrimaryMuscle] = useState("");
+  const [primaryMuscle, setPrimaryMuscle] = useState(defaultMuscle || "");
   const [secondaryMuscles, setSecondaryMuscles] = useState([]);
   const [category, setCategory] = useState("");
   const [movementType, setMovementType] = useState("");
-  const [movementPattern, setMovementPattern] = useState("");
+  const [movementPattern, setMovementPattern] = useState(lockedMovementPattern || "");
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
 
   if (!open) return null;
 
   const allMuscles = getAllSubSections();
+  const muscleOptions = allowedMuscles && allowedMuscles.length > 0
+    ? allMuscles.filter((m) => allowedMuscles.includes(m))
+    : allMuscles;
   const patterns = getPatternsForMuscle(primaryMuscle);
 
   const handleSave = async () => {
@@ -34,16 +38,16 @@ export default function CreateExerciseModal({ open, onClose }) {
       secondary_muscles: secondaryMuscles,
       category: category || "other",
       movement_type: movementType || undefined,
-      movement_pattern: movementPattern || undefined,
+      movement_pattern: isPatternLocked ? lockedMovementPattern : (movementPattern || undefined),
     });
     queryClient.invalidateQueries({ queryKey: ["exercises"] });
     setSaving(false);
     setName("");
-    setPrimaryMuscle("");
+    setPrimaryMuscle(defaultMuscle || "");
     setSecondaryMuscles([]);
     setCategory("");
     setMovementType("");
-    setMovementPattern("");
+    setMovementPattern(lockedMovementPattern || "");
     onClose();
   };
 
@@ -51,7 +55,7 @@ export default function CreateExerciseModal({ open, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center p-4 sm:items-center"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-end justify-center p-4 sm:items-center"
       onClick={onClose}
     >
       <div
@@ -85,13 +89,13 @@ export default function CreateExerciseModal({ open, onClose }) {
                 value={primaryMuscle}
                 onChange={(e) => {
                   setPrimaryMuscle(e.target.value);
-                  setMovementPattern("");
+                  if (!isPatternLocked) setMovementPattern("");
                   setSecondaryMuscles((prev) => prev.filter((m) => m !== e.target.value));
                 }}
                 className="w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm font-medium appearance-none pr-9 focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="">Select primary muscle…</option>
-                {allMuscles.map((m) => (
+                {muscleOptions.map((m) => (
                   <option key={m} value={m}>{getMuscleDisplayLabel(m)}</option>
                 ))}
               </select>
@@ -117,24 +121,34 @@ export default function CreateExerciseModal({ open, onClose }) {
             </div>
           </div>
 
-          {/* Movement Pattern — dependent on primary muscle */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Movement Pattern</label>
-            <div className="relative">
-              <select
-                value={movementPattern}
-                disabled={!primaryMuscle}
-                onChange={(e) => setMovementPattern(e.target.value)}
-                className={`w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm font-medium appearance-none pr-9 focus:outline-none focus:ring-1 focus:ring-primary ${!primaryMuscle ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">{primaryMuscle ? "None" : "Select primary muscle first…"}</option>
-                {patterns.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          {/* Movement Pattern — dependent on primary muscle (locked when creating from a variation) */}
+          {isPatternLocked ? (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Movement Pattern</label>
+              <div className="w-full bg-secondary rounded-lg px-3 py-2.5 text-sm font-medium flex items-center justify-between">
+                <span>{lockedMovementPattern}</span>
+                <span className="text-[10px] text-primary font-semibold uppercase tracking-wide">Locked</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Movement Pattern</label>
+              <div className="relative">
+                <select
+                  value={movementPattern}
+                  disabled={!primaryMuscle}
+                  onChange={(e) => setMovementPattern(e.target.value)}
+                  className={`w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm font-medium appearance-none pr-9 focus:outline-none focus:ring-1 focus:ring-primary ${!primaryMuscle ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">{primaryMuscle ? "None" : "Select primary muscle first…"}</option>
+                  {patterns.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+          )}
 
           {/* Movement Type (compound/isolation — rest timing) */}
           <div>

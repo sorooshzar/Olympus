@@ -117,6 +117,17 @@ export default function EditWorkout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // After returning from the ExerciseSelector, scroll to the bottom so the user
+  // sees the exercise they just added (works for both add and cancel).
+  useEffect(() => {
+    if (sessionStorage.getItem("exerciseSelector_returnScroll") === "1") {
+      sessionStorage.removeItem("exerciseSelector_returnScroll");
+      setTimeout(() => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+      }, 350);
+    }
+  }, []);
+
   const handleExercisesChange = (newExercises) => {
     isDirty.current = true;
     setExercises(newExercises);
