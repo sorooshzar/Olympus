@@ -20,6 +20,7 @@ import FolderCard from "../components/workouts/FolderCard";
 import WorkoutCard from "../components/workouts/WorkoutCard";
 import CreateDialog from "../components/workouts/CreateDialog";
 import ExerciseFilters from "../components/exercises/ExerciseFilters";
+import RankedInfoBanner from "../components/exercises/RankedInfoBanner";
 import CreateExerciseModal from "../components/exercises/CreateExerciseModal";
 import ExerciseDetailModal from "../components/exercises/ExerciseDetailModal";
 import { useWorkoutFolders, useWorkoutTemplates, useExercises, useWorkoutLogs } from "../components/hooks/useWorkoutData";
@@ -500,6 +501,7 @@ function ExercisesTab() {
         </div>
       )}
       <ExerciseFilters filters={filters} onFiltersChange={f => setFilters(prev => ({ ...f, subMuscle: prev.subMuscle }))} />
+      <RankedInfoBanner active={!!filters.ranked} />
 
       {isLoading ? (
         <div className="space-y-2">{Array(6).fill(0).map((_, i) => <div key={i} className="h-14 bg-secondary/50 rounded-xl animate-in fade-in duration-700 repeat-infinite" style={{animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'}} />)}</div>
