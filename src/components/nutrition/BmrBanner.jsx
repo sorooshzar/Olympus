@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Flame, TrendingUp, TrendingDown } from "lucide-react";
-import { calcBMR } from "@/components/utils/bmrCalc";
+import { calcBMR, calcTDEE } from "@/components/utils/bmrCalc";
 import { useGoalWeight } from "@/components/utils/useGoalWeight";
 
 // Subtle two-line banner shown at the top of the nutrition settings page:
@@ -32,6 +32,7 @@ export default function BmrBanner() {
 
   const currentKg = bodyWeights[0]?.weight;
   const bmr = user?.bmr || (user ? calcBMR({ weightKg: currentKg || user.weight_kg, heightCm: user.height_cm, age: user.age, sex: user.sex }) : null);
+  const tdee = user ? calcTDEE(bmr, user.activity_level) : null;
 
   const advice = (() => {
     if (!goalKg || !currentKg || !weeks) return null;
@@ -45,8 +46,8 @@ export default function BmrBanner() {
     <div className="px-4 py-3 mb-3 rounded-xl bg-secondary/60 border border-border/60 space-y-1">
       <div className="flex items-center gap-1.5 text-sm">
         <Flame className="w-3.5 h-3.5 text-primary" />
-        <span className="text-muted-foreground">BMR:</span>
-        <span className="font-bold text-foreground">{bmr ? `${bmr.toLocaleString()} cal` : "—"}</span>
+        <span className="text-muted-foreground">TDEE:</span>
+        <span className="font-bold text-foreground">{tdee ? `${tdee.toLocaleString()} cal` : "—"}</span>
       </div>
       <div className="flex items-center gap-1.5 text-sm">
         {advice ? (
