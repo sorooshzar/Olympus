@@ -233,7 +233,7 @@ function PlateMode() {
 
         <button onClick={() => setUse55lb(!use55lb)} className="w-full flex items-center justify-between bg-secondary rounded-xl px-4 py-3">
           <span className="text-sm font-semibold">Include 55 lb plates</span>
-          <div className={`w-10 h-6 rounded-full transition-colors relative ${use55lb ? "bg-primary" : "bg-muted"}`}>
+          <div className={`w-10 h-6 rounded-full transition-colors relative ${use55lb ? "bg-primary" : "bg-black/40"}`}>
             <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${use55lb ? "left-[18px]" : "left-0.5"}`} />
           </div>
         </button>
