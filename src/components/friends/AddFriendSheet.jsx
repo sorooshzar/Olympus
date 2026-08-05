@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Search, UserCheck, Eye, EyeOff, Copy, Check as CheckIcon } from "lucide-react";
+import { X, UserCheck, Eye, EyeOff, Copy, Check as CheckIcon, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
@@ -13,10 +13,9 @@ function formatCode(raw) {
 
 export default function AddFriendSheet({ currentUser, onClose, onRequestSent }) {
   const [query, setQuery] = useState("");
-  const [result, setResult] = useState(null);
-  const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sentUsername, setSentUsername] = useState(null);
   const [error, setError] = useState("");
   const [showMyCode, setShowMyCode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -30,62 +29,35 @@ export default function AddFriendSheet({ currentUser, onClose, onRequestSent }) 
   };
 
   const handleQueryChange = (e) => {
-    const formatted = formatCode(e.target.value);
-    setQuery(formatted);
-    setResult(null);
+    setQuery(formatCode(e.target.value));
     setSent(false);
+    setSentUsername(null);
     setError("");
   };
 
-  const handleSearch = async () => {
+  const handleSend = async () => {
     const raw = query.replace(/-/g, "").trim();
     if (!raw || raw.length < 12) return;
-    setSearching(true);
-    setResult(null);
+    setSending(true);
     setError("");
     setSent(false);
-
-    const users = await base44.entities.User.list();
-    const found = users.find(u =>
-      u.friend_code?.replace(/-/g, "") === raw && u.email !== currentUser.email
-    );
-
-    setSearching(false);
-    if (found) {
-      setResult({ found: true, user: found });
-    } else {
-      setResult({ found: false });
-    }
-  };
-
-  const handleSendRequest = async () => {
-    if (!result?.user) return;
-    setSending(true);
-
-    const existing = await base44.entities.Friendship.list();
-    const alreadyExists = existing.some(f =>
-      (f.requester_email === currentUser.email && f.recipient_email === result.user.email) ||
-      (f.requester_email === result.user.email && f.recipient_email === currentUser.email)
-    );
-
-    if (alreadyExists) {
-      setError("You already have a connection with this user.");
+    try {
+      const res = await base44.functions.invoke("friendsApi", { action: "sendRequest", recipientCode: raw });
       setSending(false);
-      return;
+      if (res.data?.ok) {
+        setSent(true);
+        setSentUsername(res.data?.recipientUsername || null);
+        onRequestSent?.();
+      } else {
+        setError(res.data?.error || "Could not send request.");
+      }
+    } catch (e) {
+      setSending(false);
+      setError(e?.response?.data?.error || e?.message || "Could not send request.");
     }
-
-    await base44.entities.Friendship.create({
-      requester_email: currentUser.email,
-      recipient_email: result.user.email,
-      requester_username: currentUser.username || null,
-      recipient_username: result.user.username || null,
-      status: "pending",
-    });
-
-    setSending(false);
-    setSent(true);
-    onRequestSent?.();
   };
+
+  const codeReady = query.replace(/-/g, "").length >= 12;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center" onClick={onClose}>
@@ -140,41 +112,24 @@ export default function AddFriendSheet({ currentUser, onClose, onRequestSent }) 
             placeholder="XXXX-XXXX-XXXX"
             value={query}
             onChange={handleQueryChange}
-            onKeyDown={e => e.key === "Enter" && handleSearch()}
+            onKeyDown={e => e.key === "Enter" && codeReady && !sending && !sent && handleSend()}
             className="bg-secondary border-0 flex-1 font-mono text-base tracking-widest text-center"
             maxLength={14}
             inputMode="numeric"
           />
           <Button
-            onClick={handleSearch}
-            disabled={searching || query.replace(/-/g, "").length < 12}
+            onClick={handleSend}
+            disabled={sending || !codeReady || sent}
             className="px-4 rounded-xl"
           >
-            <Search className="w-4 h-4" />
+            {sending ? "..." : <Send className="w-4 h-4" />}
           </Button>
         </div>
 
-        {result && !result.found && (
-          <p className="text-sm text-muted-foreground text-center py-2">No user found with that code.</p>
-        )}
-
-        {result?.found && !sent && (
-          <div className="flex items-center gap-3 bg-secondary rounded-2xl px-4 py-3.5">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-sm font-bold text-primary">{result.user.username?.[0]?.toUpperCase() || "?"}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">@{result.user.username || "Unknown user"}</p>
-            </div>
-            <Button size="sm" onClick={handleSendRequest} disabled={sending} className="rounded-xl px-3 text-xs">
-              {sending ? "Sending..." : "Add"}
-            </Button>
-          </div>
-        )}
-
         {sent && (
           <div className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-primary">
-            <UserCheck className="w-4 h-4" /> Friend request sent!
+            <UserCheck className="w-4 h-4" />
+            {sentUsername ? `Request sent to @${sentUsername}!` : "Friend request sent!"}
           </div>
         )}
 

@@ -141,16 +141,18 @@ export default function FriendProfileModal({ friend, xp, onClose, workoutLogs, b
           </div>
 
           {/* SBD Section */}
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Squat", value: squat1RM },
-              { label: "Bench", value: bench1RM },
-              { label: "Deadlift", value: deadlift1RM },
+              { label: "S", value: squat1RM },
+              { label: "B", value: bench1RM },
+              { label: "D", value: deadlift1RM },
               { label: "Total", value: totalSBD }
             ].map((stat) => (
-              <div key={stat.label} className="bg-card border border-border rounded-2xl p-3 text-center">
-                <p className="text-sm font-black text-primary">{stat.value > 0 ? `${toDisplay(stat.value)}${weightUnit}` : "--"}</p>
-                <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider mt-1">{stat.label}</p>
+              <div key={stat.label} className="bg-card border border-border rounded-xl p-2 text-center">
+                <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">{stat.label}</p>
+                <p className="text-sm font-black text-primary leading-none mt-0.5 truncate">
+                  {stat.value > 0 ? Math.round(toDisplay(stat.value)) : "—"}
+                </p>
               </div>
             ))}
           </div>

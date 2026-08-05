@@ -9,15 +9,12 @@ export default function InboxSheet({ currentUser, requests, onClose, onRefresh }
   );
 
   const handleAccept = async (req) => {
-    await base44.entities.Friendship.update(req.id, {
-      status: "accepted",
-      recipient_username: currentUser.username || null,
-    });
+    await base44.functions.invoke("friendsApi", { action: "accept", recordId: req.id });
     onRefresh();
   };
 
   const handleDecline = async (req) => {
-    await base44.entities.Friendship.delete(req.id);
+    await base44.functions.invoke("friendsApi", { action: "reject", recordId: req.id });
     onRefresh();
   };
 
