@@ -15,7 +15,7 @@ import {
 
 export default function ExerciseDetailModal({ exercise, isOpen, onClose, workoutLogs = [], onDelete }) {
   const [tab, setTab] = useState("learn");
-  const [graphMode, setGraphMode] = useState("volume");
+  const [graphMode, setGraphMode] = useState("e1rm");
   const { unit: weightUnit, toDisplay } = useWeightUnit();
 
   const calculateSessionPeak1RM = (sets) => {
@@ -171,19 +171,19 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose, workout
           {/* Stats Tab */}
           {tab === "stats" && (
             <div className="bg-secondary rounded-xl p-4 space-y-4">
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="grid grid-cols-4 gap-1">
                 {Object.entries(graphMetrics).map(([k, m]) => (
                   <button
                     key={k}
                     onClick={() => setGraphMode(k)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${
+                    className={`px-1.5 py-1 rounded-full text-[11px] font-semibold transition-all border truncate ${
                       graphMode === k
                         ? "text-white border-transparent"
                         : "bg-card text-muted-foreground border-transparent"
                     }`}
                     style={graphMode === k ? { backgroundColor: m.color } : {}}
                   >
-                    {k === "e1rm" ? "Est. 1RM" : k === "maxWeight" ? "Max Weight" : k === "reps" ? "Reps" : "Volume"}
+                    {k === "e1rm" ? "Est. 1RM" : k === "maxWeight" ? "Max Wt" : k === "reps" ? "Reps" : "Volume"}
                   </button>
                 ))}
               </div>
