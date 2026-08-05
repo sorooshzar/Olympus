@@ -99,9 +99,15 @@ export default function ExerciseBlock({
   return (
     <div
       className={`bg-card rounded-xl overflow-hidden transition-shadow ${
-        isUnfilledVariation && !exercise.color ? "border-2 border-dashed border-primary/40" : "border border-border"
+        isUnfilledVariation ? "border-2 border-dashed border-primary/40" : "border border-border"
       }`}
-      style={isUnfilledVariation && !exercise.color ? undefined : { borderLeftWidth: "3px", borderLeftColor: borderColor }}
+      style={
+        isUnfilledVariation && exercise.color
+          ? { borderRightWidth: "3px", borderRightStyle: "solid", borderRightColor: exercise.color }
+          : isUnfilledVariation
+            ? undefined
+            : { borderLeftWidth: "3px", borderLeftColor: borderColor }
+      }
     >
       {/* Exercise Header */}
       <div className="flex items-center px-3 py-3 gap-2">
