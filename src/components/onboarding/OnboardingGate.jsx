@@ -53,7 +53,7 @@ export default function OnboardingGate({ children }) {
         await base44.auth.updateMe(payload);
         // Mirror to local storage
         if (a.weight_unit) userStorage.setItem("gym-weight-unit", a.weight_unit);
-        if (a.week_start) userStorage.setItem("gym-week-start", a.week_start === "sunday" ? "0" : "1");
+        if (a.week_start) userStorage.setItem("gym-week-start", a.week_start);
         setStatus("app");
         return;
       }

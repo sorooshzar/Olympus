@@ -106,6 +106,14 @@
         "lbs"
       ]
     },
+    "distance_unit": {
+      "type": "string",
+      "enum": [
+        "metric",
+        "imperial"
+      ],
+      "description": "Preferred distance unit (metric=km, imperial=mi)"
+    },
     "week_start": {
       "type": "string",
       "enum": [

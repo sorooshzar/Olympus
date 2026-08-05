@@ -46,13 +46,18 @@ export function useSettingsState() {
       setMacroProtein(u?.daily_protein || parseInt(userStorage.getItem("gym-macro-protein") || "150"));
       setMacroCarbs(u?.daily_carbs || parseInt(userStorage.getItem("gym-macro-carbs") || "225"));
       setMacroFat(u?.daily_fat || parseInt(userStorage.getItem("gym-macro-fat") || "67"));
+
+      // Units — server is source of truth; mirror to localStorage so other readers (useWeightUnit, etc.) stay in sync
+      const wu = u?.weight_unit || userStorage.getItem("gym-weight-unit") || "kg";
+      setWeightUnit(wu); userStorage.setItem("gym-weight-unit", wu);
+      const du = u?.distance_unit || userStorage.getItem("gym-distance-unit") || "metric";
+      setDistanceUnit(du); userStorage.setItem("gym-distance-unit", du);
+      const ws = u?.week_start || userStorage.getItem("gym-week-start") || "monday";
+      setWeekStart(ws); userStorage.setItem("gym-week-start", ws);
     }).catch(() => {});
 
     setDarkMode(localStorage.getItem("gym-dark-mode") === null ? true : localStorage.getItem("gym-dark-mode") === "true");
     setTheme(userStorage.getItem("gym-theme") || "default");
-    setWeightUnit(userStorage.getItem("gym-weight-unit") || "kg");
-    setDistanceUnit(userStorage.getItem("gym-distance-unit") || "metric");
-    setWeekStart(userStorage.getItem("gym-week-start") || "monday");
     setWarmupRest(parseInt(userStorage.getItem("gym-warmup-rest") || "60"));
     setCompoundRest(parseInt(userStorage.getItem("gym-compound-rest") || "180"));
     setIsolationRest(parseInt(userStorage.getItem("gym-isolation-rest") || "90"));
@@ -83,6 +88,17 @@ export function useSettingsState() {
   const handleWeightUnit = (u) => {
     save("gym-weight-unit", u, setWeightUnit);
     window.dispatchEvent(new CustomEvent("weightUnitChanged", { detail: { unit: u } }));
+    base44.auth.updateMe({ weight_unit: u }).catch(() => {});
+  };
+
+  const handleDistanceUnit = (v) => {
+    save("gym-distance-unit", v, setDistanceUnit);
+    base44.auth.updateMe({ distance_unit: v }).catch(() => {});
+  };
+
+  const handleWeekStart = (v) => {
+    save("gym-week-start", v, setWeekStart);
+    base44.auth.updateMe({ week_start: v }).catch(() => {});
   };
 
   const saveMacros = async (vals) => {
@@ -115,7 +131,7 @@ export function useSettingsState() {
   return {
     user,
     darkMode, toggleDark, theme, handleTheme,
-    weightUnit, handleWeightUnit, distanceUnit, weekStart,
+    weightUnit, handleWeightUnit, distanceUnit, handleDistanceUnit, weekStart, handleWeekStart,
     warmupRest, compoundRest, isolationRest, autoStartRest, timerSound, timerVibration,
     setWarmupRest, setCompoundRest, setIsolationRest, setAutoStartRest, setTimerSound, setTimerVibration,
     macroCalories, setMacroCalories, macroProtein, setMacroProtein, macroCarbs, setMacroCarbs, macroFat, setMacroFat,
