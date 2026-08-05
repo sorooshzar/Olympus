@@ -8,16 +8,88 @@
     },
     "rank": {
       "type": "string",
-      "description": "Current rank for this muscle"
+      "description": "Mirrors displayed_rank for backward compatibility"
     },
     "impressiveness_score": {
       "type": "number",
-      "description": "Latest impressiveness score for this muscle"
+      "description": "Best tier_index / 8 across the rolling window (legacy field, kept in sync)"
+    },
+    "rank_history": {
+      "type": "array",
+      "description": "Rolling window of the last 4 rank events (newest kept; events older than 90 days pruned)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "wood",
+              "bronze",
+              "silver",
+              "gold",
+              "emerald",
+              "diamond",
+              "champion",
+              "titan",
+              "olympian"
+            ]
+          },
+          "tier_index": {
+            "type": "number",
+            "description": "Numeric tier 0-8 (wood=0 ... olympian=8)"
+          },
+          "exercise_name": {
+            "type": "string"
+          },
+          "exercise_id": {
+            "type": "string"
+          },
+          "workout_log_id": {
+            "type": "string",
+            "description": "ID of the WorkoutLog this rank event was sourced from \u2014 enables cascade deletion when a workout or a specific exercise within it is deleted."
+          },
+          "exercise_instance_index": {
+            "type": "number",
+            "description": "Index of this exercise within the source WorkoutLog.exercises array \u2014 distinguishes two exercises logged in the same workout and allows precise per-exercise deletion."
+          },
+          "estimated_1rm": {
+            "type": "number",
+            "description": "Best-set estimated 1RM in lb (after involvement factor applied for secondary)"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "secondary"
+            ]
+          },
+          "involvement_factor": {
+            "type": "number",
+            "description": "1.0 for primary, 0.0-1.0 for secondary"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "displayed_rank": {
+      "type": "string",
+      "description": "Best tier among events in rank_history (the rank shown on the body model)"
+    },
+    "displayed_rank_index": {
+      "type": "number",
+      "description": "Numeric index 0-8 of displayed_rank"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date of the most recent event in rank_history"
     }
   },
   "required": [
-    "muscle",
-    "rank"
+    "muscle"
   ],
   "rls": {
     "create": {

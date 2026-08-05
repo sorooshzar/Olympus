@@ -88,11 +88,19 @@ function CalendarView({ logs, onSelectDay }) {
   );
 }
 
-function WorkoutDetailModal({ log, onClose, onDelete, onEdit }) {
+function WorkoutDetailModal({ log, onClose, onDelete, onEdit, onDeleteExercise }) {
   const { unit: weightUnit, toDisplay } = useWeightUnit();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteExerciseIdx, setDeleteExerciseIdx] = useState(null);
 
   if (!log) return null;
+
+  const handleConfirmExerciseDelete = () => {
+    const idx = deleteExerciseIdx;
+    setDeleteExerciseIdx(null);
+    if (idx == null) return;
+    onDeleteExercise?.(log.id, idx);
+  };
 
   return (
     <motion.div
@@ -144,6 +152,13 @@ function WorkoutDetailModal({ log, onClose, onDelete, onEdit }) {
                       <p className="text-xs text-muted-foreground">{ex.muscle_group}</p>
                     )}
                   </div>
+                  <button
+                    onClick={() => setDeleteExerciseIdx(i)}
+                    className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label={`Remove ${ex.exercise_name} from this workout`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                   {rankInfo && (
                     <div className="flex-shrink-0 flex flex-col items-center gap-0.5">
                       <div
@@ -188,13 +203,33 @@ function WorkoutDetailModal({ log, onClose, onDelete, onEdit }) {
             onClick={e => e.stopPropagation()}>
             <div>
               <h3 className="font-bold text-base">Delete this workout?</h3>
-              <p className="text-sm text-muted-foreground mt-1">"{log.name}" will be permanently removed from your history. This cannot be undone.</p>
+              <p className="text-sm text-muted-foreground mt-1">"{log.name}" will be permanently removed from your history, along with any muscle rank credit it gave. This cannot be undone.</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDelete(false)}
                 className="flex-1 py-2.5 rounded-xl bg-secondary text-sm font-semibold">Cancel</button>
               <button onClick={() => { setConfirmDelete(false); onDelete(log.id); }}
                 className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Per-exercise delete confirmation */}
+      {deleteExerciseIdx != null && log.exercises?.[deleteExerciseIdx] && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4 sm:items-center"
+          onClick={() => setDeleteExerciseIdx(null)}>
+          <div className="bg-card w-full max-w-sm rounded-2xl border border-border p-5 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            <div>
+              <h3 className="font-bold text-base">Remove {log.exercises[deleteExerciseIdx].exercise_name}?</h3>
+              <p className="text-sm text-muted-foreground mt-1">This will remove it from this workout and also remove any muscle rank credit it gave.</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteExerciseIdx(null)}
+                className="flex-1 py-2.5 rounded-xl bg-secondary text-sm font-semibold">Cancel</button>
+              <button onClick={handleConfirmExerciseDelete}
+                className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold">Remove</button>
             </div>
           </div>
         </div>
@@ -227,9 +262,31 @@ export default function WorkoutHistory() {
   };
 
   const handleDelete = async (id) => {
+    // Delete the log, then cascade: rebuild this log's rank events (log is now
+    // gone → wipes all events sourced from it, recomputes displayed_rank).
     await base44.entities.WorkoutLog.delete(id);
+    try {
+      await base44.functions.invoke("calculateRanks", { workoutLogId: id, rebuild: true });
+    } catch (e) { console.error("rank cascade failed", e); }
     queryClient.invalidateQueries({ queryKey: ["workoutLogs"] });
+    queryClient.invalidateQueries({ queryKey: ["userMuscleRanks"] });
     setSelectedLog(null);
+  };
+
+  const handleDeleteExercise = async (logId, exerciseIndex) => {
+    // Remove the exercise from the WorkoutLog, then rebuild this log's rank
+    // events with fresh 0..n-1 indices (removes the deleted exercise's credit).
+    const log = logs.find(l => l.id === logId) || selectedLog;
+    if (!log) return;
+    const updatedExercises = (log.exercises || []).map((ex, i) => i === exerciseIndex ? null : ex).filter(Boolean);
+    try {
+      await base44.entities.WorkoutLog.update(logId, { exercises: updatedExercises });
+      await base44.functions.invoke("calculateRanks", { workoutLogId: logId, rebuild: true });
+    } catch (e) { console.error("exercise delete failed", e); }
+    queryClient.invalidateQueries({ queryKey: ["workoutLogs"] });
+    queryClient.invalidateQueries({ queryKey: ["userMuscleRanks"] });
+    // Reflect the change in the open modal immediately.
+    setSelectedLog(prev => prev ? { ...prev, exercises: updatedExercises } : prev);
   };
 
   return (
@@ -301,6 +358,7 @@ export default function WorkoutHistory() {
             log={selectedLog}
             onClose={() => setSelectedLog(null)}
             onDelete={handleDelete}
+            onDeleteExercise={handleDeleteExercise}
           />
         )}
       </AnimatePresence>
