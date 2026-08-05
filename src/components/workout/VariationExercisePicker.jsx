@@ -19,7 +19,7 @@ function sameMuscleFamily(a, b) {
   return ga.some((g) => gb.includes(g));
 }
 
-export default function VariationExercisePicker({ primaryMuscle, movementPattern, onSelect, onClose }) {
+export default function VariationExercisePicker({ primaryMuscle, movementPattern, onSelect, onClose, isActive = false }) {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const { data: exercises = [], isLoading } = useExercises();
@@ -91,6 +91,14 @@ export default function VariationExercisePicker({ primaryMuscle, movementPattern
         </div>
       </div>
 
+      {!isActive && (
+        <div className="px-4 pb-2 shrink-0">
+          <p className="text-xs text-muted-foreground bg-secondary/60 rounded-lg px-3 py-2">
+            Browsing matching exercises — start a workout to select one for this slot.
+          </p>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto px-4 pb-6">
         {isLoading ? (
           <div className="space-y-2">
@@ -109,8 +117,10 @@ export default function VariationExercisePicker({ primaryMuscle, movementPattern
             {filtered.map((ex) => (
               <div
                 key={ex.id}
-                onClick={() => onSelect(ex)}
-                className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 text-left transition-colors cursor-pointer"
+                onClick={isActive ? () => onSelect(ex) : undefined}
+                className={`w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl text-left transition-colors ${
+                  isActive ? "hover:bg-secondary/50 cursor-pointer" : ""
+                }`}
               >
                 <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 text-xs font-bold text-muted-foreground uppercase">
                   {(ex.category || "--").slice(0, 2)}

@@ -88,6 +88,7 @@ export default function ExerciseBlock({
       exercise_name: selected.name,
       muscle_group: selected.primary_muscle,
       movement_type: selected.movement_type || null,
+      color: exercise.color, // inherit the variation's color onto the resolved exercise
     });
     setShowVariationPicker(false);
   };
@@ -97,8 +98,10 @@ export default function ExerciseBlock({
 
   return (
     <div
-      className={`bg-card rounded-xl overflow-hidden transition-shadow ${isUnfilledVariation ? "border-2 border-dashed border-primary/40" : "border border-border"}`}
-      style={isUnfilledVariation ? undefined : { borderLeftWidth: "3px", borderLeftColor: borderColor }}
+      className={`bg-card rounded-xl overflow-hidden transition-shadow ${
+        isUnfilledVariation && !exercise.color ? "border-2 border-dashed border-primary/40" : "border border-border"
+      }`}
+      style={isUnfilledVariation && !exercise.color ? undefined : { borderLeftWidth: "3px", borderLeftColor: borderColor }}
     >
       {/* Exercise Header */}
       <div className="flex items-center px-3 py-3 gap-2">
@@ -244,6 +247,7 @@ export default function ExerciseBlock({
           movementPattern={livePattern}
           onSelect={handleVariationSelect}
           onClose={() => setShowVariationPicker(false)}
+          isActive={isActive}
         />
       )}
     </div>
