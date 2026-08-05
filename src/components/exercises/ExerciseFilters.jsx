@@ -38,27 +38,26 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
 
   return (
     <div className="flex gap-2 items-center">
-      {/* Ranked toggle */}
+      {/* Ranked toggle — crown only */}
       <button
         onClick={() => onFiltersChange({ ...filters, ranked: !rankedActive })}
-        className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
+        className={`flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
           rankedActive ? "border-amber-400/50 bg-amber-400/15 text-amber-400" : "border-border bg-secondary text-muted-foreground"
         }`}
       >
         <Crown className="w-3.5 h-3.5" fill={rankedActive ? "#FFD700" : "none"} strokeWidth={1.5} />
-        <span>Ranked</span>
       </button>
 
       {/* Muscle Group Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-1 min-w-0 ${
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[92px] ${
               muscleCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
             }`}
           >
-            <span className="flex-1 text-left truncate">
-              {muscleCount > 0 ? `Muscle (${muscleCount})` : "Muscle Group"}
+            <span className="text-left truncate">
+              {muscleCount > 0 ? `Muscle (${muscleCount})` : "Muscle"}
             </span>
             <ChevronDown className="w-3 h-3 flex-shrink-0" />
           </button>
@@ -95,12 +94,12 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-1 min-w-0 ${
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[108px] ${
               eqCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
             }`}
           >
-            <span className="flex-1 text-left truncate">
-              {eqCount > 0 ? `Equipment (${eqCount})` : "Equipment"}
+            <span className="text-left whitespace-nowrap">
+              {eqCount > 0 ? `Equip (${eqCount})` : "Equipment"}
             </span>
             <ChevronDown className="w-3 h-3 flex-shrink-0" />
           </button>
