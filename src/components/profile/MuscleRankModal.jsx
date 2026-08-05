@@ -1,38 +1,30 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, TrendingUp, Dumbbell, Trophy } from "lucide-react";
+import { X, Dumbbell, Trophy, Repeat } from "lucide-react";
 import { RANKS, MUSCLE_ANCHOR } from "@/components/utils/rankEngine";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 
-const RANK_NAMES = RANKS.map(r => r.name);
 const RANK_BY_NAME = RANKS.reduce((acc, r) => { acc[r.name] = r; return acc; }, {});
 
-export default function MuscleRankModal({ muscle, rankName, rankData, workoutLogs, onClose }) {
+function timeAgo(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? "1 month ago" : `${months} months ago`;
+}
+
+export default function MuscleRankModal({ muscle, rankRecord, rankData, onClose }) {
   const { unit, toDisplay } = useWeightUnit();
-
   const anchor = MUSCLE_ANCHOR[muscle] || "Best Exercise";
+  const history = (rankRecord?.rank_history && Array.isArray(rankRecord.rank_history)) ? rankRecord.rank_history : [];
 
-  // Authoritative rank: prefer detailed client-computed data, fall back to DB rank name
-  const rank = rankData?.rank || (rankName ? RANK_BY_NAME[rankName] : null);
-
-  // Contributing exercises: rankable exercises in logs that target this muscle
-  const contributing = useMemo(() => {
-    if (!workoutLogs) return [];
-    const seen = {};
-    workoutLogs.forEach(log => {
-      log.exercises?.forEach(ex => {
-        if (!ex.rank) return;
-        if ((ex.muscle_group || "").trim() !== muscle.trim()) return;
-        const key = ex.exercise_name || ex.exercise_id || "Unknown";
-        const ri = RANK_NAMES.indexOf(ex.rank);
-        const prev = seen[key];
-        if (!prev || ri > prev.rankIndex) {
-          seen[key] = { name: ex.exercise_name || "Unknown", rank: ex.rank, rankIndex: ri, date: log.finished_at || log.started_at };
-        }
-      });
-    });
-    return Object.values(seen).sort((a, b) => b.rankIndex - a.rankIndex);
-  }, [workoutLogs, muscle]);
+  // displayed rank = best tier in the rolling window (from DB), fallback to rankData
+  const displayedName = rankRecord?.displayed_rank || rankRecord?.rank || (rankData?.rank?.name);
+  const rank = displayedName ? RANK_BY_NAME[displayedName] : null;
 
   // Empty state — no rank at all
   if (!rank) {
@@ -61,15 +53,8 @@ export default function MuscleRankModal({ muscle, rankName, rankData, workoutLog
     );
   }
 
-  const hasDetail = !!rankData;
-  const levelLabel = hasDetail ? rankData.levelLabel : null;
-  const levelProgress = hasDetail ? rankData.levelProgress : null;
-  const nextRank = hasDetail ? rankData.nextRank : null;
-  const nextLevel = hasDetail ? rankData.nextLevel : null;
-  const rankIndex = hasDetail ? rankData.rankIndex : RANK_NAMES.indexOf(rank.name);
-  const levelRoman = ["I", "II", "III"];
-  const isMax = hasDetail ? (!nextRank && rankData.level === 3) : rankIndex >= RANKS.length - 1;
-  const nextLevelLabel = isMax ? "MAX" : !hasDetail ? RANKS[Math.min(rankIndex + 1, RANKS.length - 1)].label : (rankData.level === 3 ? `${nextRank?.label} I` : `${rank.label} ${levelRoman[nextLevel - 1]}`);
+  const rankIndex = RANKS.findIndex(r => r.name === rank.name);
+  const windowLabel = history.length ? `${history.length} recent ${history.length === 1 ? "log" : "logs"}` : "No recent logs";
 
   return (
     <AnimatePresence>
@@ -88,59 +73,29 @@ export default function MuscleRankModal({ muscle, rankName, rankData, workoutLog
               <X className="w-4 h-4" />
             </button>
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-1">{muscle}</p>
-            {/* Rank badge */}
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg"
                 style={{ background: rank.color, color: rank.textColor }}>
                 {rank.label[0]}
               </div>
               <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black" style={{ color: rank.color }}>{rank.label}</span>
-                  {levelLabel && <span className="text-lg font-bold text-muted-foreground">{levelLabel}</span>}
-                </div>
+                <span className="text-2xl font-black" style={{ color: rank.color }}>{rank.label}</span>
                 <p className="text-[11px] text-muted-foreground mt-0.5">{rank.description}</p>
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">{windowLabel} · best in last 90 days</p>
               </div>
             </div>
           </div>
 
           <div className="px-5 py-4 space-y-4">
-            {/* Level progress bar — only when detailed data available */}
-            {hasDetail && (
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[11px] font-semibold text-muted-foreground">{rank.label} {levelLabel}</span>
-                  <span className="text-[11px] font-semibold" style={{ color: nextRank?.color || rank.color }}>{nextLevelLabel}</span>
-                </div>
-                <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.round(levelProgress * 100)}%` }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="h-full rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${rank.color}, ${nextRank?.color || rank.color})` }}
-                  />
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1 text-right">{Math.round(levelProgress * 100)}% to {nextLevelLabel}</p>
-              </div>
-            )}
-
-            {/* All rank ladder */}
+            {/* Rank ladder */}
             <div>
               <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mb-2">Rank Ladder</p>
               <div className="flex items-center gap-1.5">
                 {RANKS.map((r, i) => (
                   <div key={r.name} className="flex flex-col items-center gap-1 flex-1">
-                    <div
-                      className="w-full h-2 rounded-full transition-all"
-                      style={{
-                        background: i <= rankIndex ? r.color : "hsl(var(--secondary))",
-                        opacity: i <= rankIndex ? 1 : 0.4,
-                      }}
-                    />
-                    {i === rankIndex && (
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: r.color }} />
-                    )}
+                    <div className="w-full h-2 rounded-full transition-all"
+                      style={{ background: i <= rankIndex ? r.color : "hsl(var(--secondary))", opacity: i <= rankIndex ? 1 : 0.4 }} />
+                    {i === rankIndex && <div className="w-1.5 h-1.5 rounded-full" style={{ background: r.color }} />}
                   </div>
                 ))}
               </div>
@@ -150,29 +105,15 @@ export default function MuscleRankModal({ muscle, rankName, rankData, workoutLog
               </div>
             </div>
 
-            {/* Primary stat — only when detailed data available */}
-            {hasDetail && (
-              <div className="bg-secondary rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Est. 1RM (last 30 days)</span>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black">{toDisplay(rankData.bestE1RM).toFixed(1)}</span>
-                  <span className="text-sm text-muted-foreground font-semibold">{unit}</span>
-                  <span className="text-xs text-muted-foreground ml-1 font-medium">{(rankData.e1rmRatio).toFixed(2)}× BW</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">via <span className="font-semibold text-foreground">{rankData.bestE1RMExercise || anchor}</span></p>
-              </div>
-            )}
-
-            {/* Contributing exercises */}
-            {contributing.length > 0 && (
-              <div>
-                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mb-2">Contributing Exercises</p>
+            {/* Recent rank history — the source of truth for contributing exercises */}
+            <div>
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mb-2">Recent Rank Events</p>
+              {history.length === 0 ? (
+                <p className="text-xs text-muted-foreground/70 py-2">No events in the rolling window.</p>
+              ) : (
                 <div className="space-y-1.5">
-                  {contributing.map((c, i) => {
-                    const r = RANK_BY_NAME[c.rank] || RANKS[0];
+                  {history.slice().reverse().map((ev, i) => {
+                    const r = RANK_BY_NAME[ev.tier] || RANKS[0];
                     return (
                       <div key={i} className="flex items-center gap-2.5 bg-secondary/60 rounded-xl px-3 py-2">
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0"
@@ -180,20 +121,30 @@ export default function MuscleRankModal({ muscle, rankName, rankData, workoutLog
                           {r.label[0]}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{c.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{r.label} tier</p>
+                          <p className="text-sm font-medium truncate">{ev.exercise_name || "Unknown"}</p>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground">{r.label} tier</span>
+                            {ev.source === "secondary" && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1 py-px rounded bg-muted text-muted-foreground">
+                                <Repeat className="w-2.5 h-2.5" /> {Math.round(ev.involvement_factor * 100)}%
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {hasDetail && c.name === rankData.bestE1RMExercise && (
-                          <TrendingUp className="w-3.5 h-3.5 text-primary shrink-0" />
-                        )}
+                        <div className="text-right shrink-0">
+                          <p className="text-[10px] text-muted-foreground">{timeAgo(ev.date)}</p>
+                          {ev.estimated_1rm ? (
+                            <p className="text-[9px] text-muted-foreground/70">{toDisplay(ev.estimated_1rm).toFixed(0)} {unit}</p>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Anchor exercise hint */}
+            {/* Anchor hint */}
             <div className="flex items-center gap-2 px-1 pb-1">
               <Trophy className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
               <p className="text-[10px] text-muted-foreground">Anchor lift for <span className="font-semibold text-foreground">{muscle}</span>: <span className="font-semibold text-foreground">{anchor}</span></p>

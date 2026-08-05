@@ -7,7 +7,11 @@ const RANK_HIERARCHY = {
   wood: 0, bronze: 1, silver: 2, gold: 3, emerald: 4,
   diamond: 5, champion: 6, titan: 7, olympian: 8,
 };
+const TIER_NAMES = ["wood", "bronze", "silver", "gold", "emerald", "diamond", "champion", "titan", "olympian"];
 const TIER_CHECK_ORDER = ["olympian", "titan", "champion", "diamond", "emerald", "gold", "silver", "bronze"];
+const ROLLING_WINDOW = 4;
+const EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;
+const DEFAULT_SECONDARY_INVOLVEMENT = 0.6;
 
 function rankCompare(a, b) {
   const ha = a == null ? -1 : (RANK_HIERARCHY[a] ?? -1);
@@ -31,14 +35,13 @@ function interpolateThresholds(standardsArray, bodyweightLb) {
   }
   const span = upper.bodyweight_lb - lower.bodyweight_lb;
   const t = span > 0 ? (bodyweightLb - lower.bodyweight_lb) / span : 0;
-  const tiers = ["wood", "bronze", "silver", "gold", "emerald", "diamond", "champion", "titan", "olympian"];
   const result = { bodyweight_lb: bodyweightLb };
-  tiers.forEach(tier => { result[tier] = lower[tier] + (upper[tier] - lower[tier]) * t; });
+  TIER_NAMES.forEach(tier => { result[tier] = lower[tier] + (upper[tier] - lower[tier]) * t; });
   return result;
 }
 
+// Returns { rank, impressiveness_score, best_metric } for a single exercise.
 function calculateExerciseRank(exerciseMeta, sets, standard, userGender, bodyweightKg, weightUnit) {
-  // Non-rankable exercises never get a rank
   if (!exerciseMeta?.is_rankable || !standard) {
     return { rank: null, impressiveness_score: null, best_metric: null };
   }
@@ -46,7 +49,6 @@ function calculateExerciseRank(exerciseMeta, sets, standard, userGender, bodywei
   if (workingSets.length === 0) {
     return { rank: null, impressiveness_score: null, best_metric: null };
   }
-  // Zero volume => never performed => no rank
   const totalVolume = workingSets.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
   if (totalVolume <= 0) {
     return { rank: null, impressiveness_score: null, best_metric: null };
@@ -70,8 +72,6 @@ function calculateExerciseRank(exerciseMeta, sets, standard, userGender, bodywei
     metric = maxReps;
   }
 
-  // 1RM standards are in lb; reps standards are unitless. Per-dumbbell convention:
-  // user logs per-hand weight, used as-is (never doubled).
   const toLb = (w) => weightUnit === "lbs" ? w : w * 2.20462;
   const metricStd = standard.exercise_type === "1RM" ? toLb(metric) : metric;
   const bodyweightLb = bodyweightKg * 2.20462;
@@ -97,7 +97,136 @@ function calculateExerciseRank(exerciseMeta, sets, standard, userGender, bodywei
     best_metric: Math.round(metricStd * 10) / 10,
   };
 }
-// ──────────────────────────────────────────────────────────────────────────
+
+// Build rank events (primary + secondary) for one rankable exercise in a log.
+// Primary gets the full tier; each secondary gets floor(primary_tier_index * involvement).
+function buildEventsForExercise(ex, meta, standard, gender, bodyweightKg, weightUnit, logDate) {
+  if (!meta?.is_rankable || !standard) return [];
+  const result = calculateExerciseRank(meta, ex.sets, standard, gender, bodyweightKg, weightUnit);
+  if (!result.rank) return [];
+
+  const primaryTierIndex = RANK_HIERARCHY[result.rank];
+  const exerciseName = ex.exercise_name || meta.name || "Unknown";
+  // Prefer the canonical (resolved) exercise id so the same exercise logged
+  // under different stale IDs across logs dedups to one event per day.
+  const exerciseId = meta.id || ex.exercise_id || null;
+  const events = [];
+
+  events.push({
+    muscle: meta.primary_muscle,
+    tier: result.rank,
+    tier_index: primaryTierIndex,
+    exercise_name: exerciseName,
+    exercise_id: exerciseId,
+    estimated_1rm: result.best_metric,
+    source: "primary",
+    involvement_factor: 1.0,
+    date: logDate,
+  });
+
+  (meta.secondary_muscles || []).forEach(muscle => {
+    if (!muscle || muscle === meta.primary_muscle) return;
+    const inv = (meta.secondary_involvement && typeof meta.secondary_involvement[muscle] === "number")
+      ? meta.secondary_involvement[muscle]
+      : DEFAULT_SECONDARY_INVOLVEMENT;
+    const secTierIndex = Math.min(8, Math.max(0, Math.floor(primaryTierIndex * inv)));
+    events.push({
+      muscle,
+      tier: TIER_NAMES[secTierIndex],
+      tier_index: secTierIndex,
+      exercise_name: exerciseName,
+      exercise_id: exerciseId,
+      estimated_1rm: result.best_metric,
+      source: "secondary",
+      involvement_factor: inv,
+      date: logDate,
+    });
+  });
+
+  return events;
+}
+
+// Collapse a list of events for one muscle into a rolling-window record payload.
+// Dedup: one event per (exercise, day), keeping the best tier (then best e1rm).
+function buildMuscleRecord(muscle, history) {
+  const now = Date.now();
+  const cutoff = now - EXPIRY_MS;
+  let h = (history || []).filter(e => {
+    const t = new Date(e.date).getTime();
+    return !isNaN(t) && t >= cutoff;
+  });
+  // Dedup by exercise + day
+  const dedup = new Map();
+  h.forEach(e => {
+    const day = (e.date || "").slice(0, 10);
+    const key = `${e.exercise_id || e.exercise_name || "unknown"}|${day}`;
+    const prev = dedup.get(key);
+    if (!prev) {
+      dedup.set(key, e);
+    } else {
+      const better = (e.tier_index > prev.tier_index) ||
+        (e.tier_index === prev.tier_index && (e.estimated_1rm || 0) > (prev.estimated_1rm || 0));
+      if (better) dedup.set(key, e);
+    }
+  });
+  h = Array.from(dedup.values());
+  // newest last
+  h.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  if (h.length > ROLLING_WINDOW) h = h.slice(h.length - ROLLING_WINDOW);
+
+  let best = null;
+  h.forEach(e => { if (!best || e.tier_index > best.tier_index) best = e; });
+  const displayed_rank = best ? best.tier : null;
+  const displayed_rank_index = best ? best.tier_index : -1;
+  const last_updated = h.length ? h[h.length - 1].date : null;
+  const impressiveness_score = best ? Math.round((best.tier_index / 8) * 1000) / 1000 : 0;
+
+  return {
+    muscle,
+    rank_history: h,
+    displayed_rank,
+    displayed_rank_index,
+    last_updated,
+    rank: displayed_rank,            // backward compat
+    impressiveness_score,
+  };
+}
+
+// Upsert UserMuscleRank records for the affected muscles, given new events.
+// Merges with existing history then dedups via buildMuscleRecord.
+async function applyEvents(base44, existingByMuscle, newEvents) {
+  const byMuscle = {};
+  newEvents.forEach(e => {
+    if (!byMuscle[e.muscle]) byMuscle[e.muscle] = [];
+    byMuscle[e.muscle].push(e);
+  });
+
+  await Promise.all(Object.entries(byMuscle).map(([muscle, muscleEvents]) => {
+    const row = existingByMuscle[muscle];
+    const existingHistory = (row?.rank_history && Array.isArray(row.rank_history)) ? [...row.rank_history] : [];
+    const merged = [...existingHistory, ...muscleEvents];
+    const payload = buildMuscleRecord(muscle, merged);
+    if (row) {
+      return base44.entities.UserMuscleRank.update(row.id, {
+        rank_history: payload.rank_history,
+        displayed_rank: payload.displayed_rank,
+        displayed_rank_index: payload.displayed_rank_index,
+        last_updated: payload.last_updated,
+        rank: payload.rank,
+        impressiveness_score: payload.impressiveness_score,
+      });
+    }
+    return base44.entities.UserMuscleRank.create({
+      muscle,
+      rank_history: payload.rank_history,
+      displayed_rank: payload.displayed_rank,
+      displayed_rank_index: payload.displayed_rank_index,
+      last_updated: payload.last_updated,
+      rank: payload.rank,
+      impressiveness_score: payload.impressiveness_score,
+    });
+  }));
+}
 
 Deno.serve(async (req) => {
   try {
@@ -105,11 +234,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { workoutLogId, userGender, weightUnit: clientWeightUnit, exercises: clientExercises } = await req.json();
-    if (!workoutLogId) return Response.json({ error: 'workoutLogId required' }, { status: 400 });
-
-    const [workoutLog] = await base44.entities.WorkoutLog.filter({ id: workoutLogId });
-    if (!workoutLog) return Response.json({ error: 'Workout not found' }, { status: 404 });
+    const body = await req.json().catch(() => ({}));
+    const { workoutLogId, userGender, weightUnit: clientWeightUnit, exercises: clientExercises, backfill } = body;
 
     const gender = userGender || user.sex || "male";
     const weightUnit = clientWeightUnit || user.weight_unit || 'kg';
@@ -117,23 +243,103 @@ Deno.serve(async (req) => {
     const [bodyWeights, allExercises, allStandards, allLogs] = await Promise.all([
       base44.entities.BodyWeight.filter({ created_by: user.email }, "-date", 1),
       base44.asServiceRole.entities.Exercise.list(null, 500),
-      base44.asServiceRole.entities.StrengthStandard.list(null, 100),
+      base44.asServiceRole.entities.StrengthStandard.list(null, 200),
       base44.entities.WorkoutLog.filter({ created_by: user.email }, "-finished_at", 2000),
     ]);
     const rawBW = bodyWeights[0]?.weight;
-    const bodyweightKg = (rawBW && rawBW > 0) ? rawBW : 80;
+    const bodyweightKg = (rawBW && rawBW > 0) ? rawBW : (gender === "female" ? 65 : 80);
 
     const exerciseMap = {};
-    allExercises.forEach(e => { exerciseMap[e.id] = e; });
+    const exerciseByName = {};
+    allExercises.forEach(e => {
+      exerciseMap[e.id] = e;
+      if (e.name) exerciseByName[e.name] = e;
+    });
     const standardMap = {};
     allStandards.forEach(s => { standardMap[s.standard_name] = s; });
+    // Resolve exercise metadata by ID, falling back to exact name match — older
+    // WorkoutLogs reference exercise IDs that were recreated, so ID lookup
+    // alone misses most historical exercises.
+    const resolveMeta = (ex) => exerciseMap[ex.exercise_id] || exerciseByName[ex.exercise_name];
+
+    const existingRanks = await base44.entities.UserMuscleRank.filter({ created_by: user.email }, null, 1000);
+    const existingByMuscle = {};
+    existingRanks.forEach(r => { existingByMuscle[r.muscle] = r; });
+
+    // ── BACKFILL: rebuild all UserMuscleRank from full workout history ──
+    if (backfill) {
+      const sortedLogs = [...allLogs].sort((a, b) =>
+        new Date(a.finished_at || a.started_at || a.created_date).getTime() -
+        new Date(b.finished_at || b.started_at || b.created_date).getTime()
+      );
+      const byMuscle = {};
+      sortedLogs.forEach(log => {
+        const logDate = log.finished_at || log.started_at || log.created_date;
+        if (!logDate) return;
+        (log.exercises || []).forEach(ex => {
+          const meta = resolveMeta(ex);
+          if (!meta) return;
+          const standard = standardMap[meta.rankable_standard_name];
+          const events = buildEventsForExercise(ex, meta, standard, gender, bodyweightKg, weightUnit, logDate);
+          events.forEach(e => {
+            if (!byMuscle[e.muscle]) byMuscle[e.muscle] = [];
+            byMuscle[e.muscle].push(e);
+          });
+        });
+      });
+
+      // Upsert muscles with events (replace history); delete stale records with none.
+      const musclesWithEvents = Object.keys(byMuscle);
+      await Promise.all([
+        ...Object.entries(byMuscle).map(([muscle, events]) => {
+          const row = existingByMuscle[muscle];
+          const payload = buildMuscleRecord(muscle, events); // fresh from history, deduped
+          if (row) {
+            return base44.entities.UserMuscleRank.update(row.id, {
+              rank_history: payload.rank_history,
+              displayed_rank: payload.displayed_rank,
+              displayed_rank_index: payload.displayed_rank_index,
+              last_updated: payload.last_updated,
+              rank: payload.rank,
+              impressiveness_score: payload.impressiveness_score,
+            });
+          }
+          return base44.entities.UserMuscleRank.create({
+            muscle,
+            rank_history: payload.rank_history,
+            displayed_rank: payload.displayed_rank,
+            displayed_rank_index: payload.displayed_rank_index,
+            last_updated: payload.last_updated,
+            rank: payload.rank,
+            impressiveness_score: payload.impressiveness_score,
+          });
+        }),
+        ...existingRanks
+          .filter(r => !musclesWithEvents.includes(r.muscle))
+          .map(r => base44.entities.UserMuscleRank.delete(r.id)),
+      ]);
+
+      let totalEvents = 0;
+      Object.values(byMuscle).forEach(ev => { totalEvents += ev.length; });
+      return Response.json({
+        backfill: true,
+        musclesRanked: musclesWithEvents.length,
+        eventsTotal: totalEvents,
+        staleDeleted: existingRanks.filter(r => !musclesWithEvents.includes(r.muscle)).length,
+      });
+    }
+
+    // ── NORMAL: process the just-saved workout ──
+    if (!workoutLogId) return Response.json({ error: 'workoutLogId required' }, { status: 400 });
+    const [workoutLog] = await base44.entities.WorkoutLog.filter({ id: workoutLogId });
+    if (!workoutLog) return Response.json({ error: 'Workout not found' }, { status: 404 });
 
     const sourceExercises = clientExercises || workoutLog.exercises || [];
+    const logDate = workoutLog.finished_at || workoutLog.started_at || workoutLog.created_date;
 
-    // Compute rank for each exercise using strength-standard tables.
-    // Non-rankable / no standard / zero-volume exercises get null rank + null score.
+    // Per-exercise rank (for WorkoutLog.exercises + medals)
     const updatedExercises = sourceExercises.map(ex => {
-      const meta = exerciseMap[ex.exercise_id];
+      const meta = resolveMeta(ex);
       if (!meta || !meta.is_rankable) {
         return { ...ex, rank: null, impressiveness_score: null };
       }
@@ -147,45 +353,22 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Persist updated exercises back to the log
     await base44.entities.WorkoutLog.update(workoutLogId, { exercises: updatedExercises });
 
-    // ─── UserMuscleRank upsert ─────────────────────────────────────────────
-    // For each muscle targeted (primary or secondary) by a rankable exercise
-    // with a non-null rank, keep the highest rank achieved. Only update an
-    // existing record when the new rank is strictly higher; create if missing.
-    const muscleBestRank = {}; // muscle -> { rank, score }
+    // Build rank events for primary + secondary muscles.
+    const allEvents = [];
     updatedExercises.forEach(ex => {
-      if (!ex.rank) return;
-      const meta = exerciseMap[ex.exercise_id];
-      if (!meta) return;
-      const muscles = [meta.primary_muscle, ...(meta.secondary_muscles || [])].filter(Boolean);
-      muscles.forEach(muscle => {
-        const cur = muscleBestRank[muscle];
-        if (!cur || rankCompare(ex.rank, cur.rank) > 0) {
-          muscleBestRank[muscle] = { rank: ex.rank, score: ex.impressiveness_score };
-        }
-      });
+      const meta = resolveMeta(ex);
+      if (!meta || !ex.rank) return;
+      const standard = standardMap[meta.rankable_standard_name];
+      allEvents.push(...buildEventsForExercise(ex, meta, standard, gender, bodyweightKg, weightUnit, logDate));
     });
 
-    const existing = await base44.entities.UserMuscleRank.filter({ created_by: user.email }, null, 1000);
-    const existingByMuscle = {};
-    existing.forEach(e => { existingByMuscle[e.muscle] = e; });
+    if (allEvents.length > 0) {
+      await applyEvents(base44, existingByMuscle, allEvents);
+    }
 
-    await Promise.all(
-      Object.entries(muscleBestRank).map(([muscle, { rank, score }]) => {
-        const row = existingByMuscle[muscle];
-        if (row) {
-          if (rankCompare(rank, row.rank) > 0) {
-            return base44.entities.UserMuscleRank.update(row.id, { rank, impressiveness_score: score });
-          }
-          return Promise.resolve();
-        }
-        return base44.entities.UserMuscleRank.create({ muscle, rank, impressiveness_score: score });
-      })
-    );
-
-    // ─── Medal evaluation ────────────────────────────────────────────────
+    // ── Medal evaluation ──
     const allLogsWithNew = [
       { ...workoutLog, exercises: updatedExercises },
       ...allLogs.filter(l => l.id !== workoutLogId),
@@ -196,7 +379,6 @@ Deno.serve(async (req) => {
       if (!currentMedals.includes(id) && !newMedals.includes(id)) newMedals.push(id);
     }
 
-    // Strength medals — best single set weight across all logs
     const bestBench = Math.max(0, ...allLogsWithNew.flatMap(l =>
       (l.exercises || []).filter(e => e.exercise_name?.toLowerCase().includes('bench'))
         .flatMap(e => (e.sets || []).filter(s => s.completed && s.type !== 'warmup').map(s => s.weight || 0))
@@ -220,7 +402,6 @@ Deno.serve(async (req) => {
     if (toLbs(bestDeadlift) >= 315) award('dead_315');
     if (toLbs(bestDeadlift) >= 405) award('dead_405');
 
-    // Consistency medals
     const workoutDates = allLogsWithNew
       .map(l => l.finished_at || l.started_at)
       .filter(Boolean)
@@ -248,7 +429,6 @@ Deno.serve(async (req) => {
     const maxWeekWorkouts = Math.max(0, ...Object.values(weekCounts));
     if (maxWeekWorkouts >= 5) award('workouts_5');
 
-    // Cardio medals
     try {
       const cardioLogs = await base44.entities.CardioLog.filter({ created_by: user.email }, null, 1000);
       const bestDurationSecs = Math.max(0, ...cardioLogs.map(l => l.duration_seconds || 0));
@@ -260,11 +440,10 @@ Deno.serve(async (req) => {
     if (newMedals.length > 0) {
       await base44.auth.updateMe({ unlockedMedals: [...currentMedals, ...newMedals] });
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     return Response.json({
       updatedLog: { ...workoutLog, exercises: updatedExercises },
-      muscleRanks: Object.entries(muscleBestRank).reduce((acc, [m, d]) => { acc[m] = d.rank; return acc; }, {}),
+      eventsCreated: allEvents.length,
       newMedals,
     });
   } catch (error) {

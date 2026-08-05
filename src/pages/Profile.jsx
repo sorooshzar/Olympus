@@ -246,14 +246,22 @@ export default function Profile() {
     enabled: !!user,
   });
 
-  // Convert database ranks to simple map
+  // Convert database ranks to simple map — prefer displayed_rank (rolling window best)
   const dbMuscleRankMap = React.useMemo(() => {
     return dbMuscleRanks.reduce((acc, record) => {
-      if (record.muscle && record.rank) {
-        acc[record.muscle] = record.rank;
+      const rankName = record.displayed_rank || record.rank;
+      if (record.muscle && rankName) {
+        acc[record.muscle] = rankName;
       }
       return acc;
     }, {});
+  }, [dbMuscleRanks]);
+
+  // Quick lookup muscle -> full UserMuscleRank record (for the rank modal)
+  const dbMuscleRankRecord = React.useMemo(() => {
+    const m = {};
+    dbMuscleRanks.forEach(r => { m[r.muscle] = r; });
+    return m;
   }, [dbMuscleRanks]);
 
   // Compute muscle ranks as fallback for client-side calculations
@@ -504,9 +512,8 @@ export default function Profile() {
       {rankModalMuscle && (
         <MuscleRankModal
           muscle={rankModalMuscle}
-          rankName={muscleRankNames[rankModalMuscle]}
+          rankRecord={dbMuscleRankRecord[rankModalMuscle]}
           rankData={muscleRankDetails[rankModalMuscle]}
-          workoutLogs={workoutLogs}
           onClose={() => setRankModalMuscle(null)}
         />
       )}
