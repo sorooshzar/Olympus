@@ -56,16 +56,22 @@ export default function AddVariationSheet({ open, onClose, onAdd }) {
     // The display name is cosmetic; movement_pattern is the functional field and
     // must use the exercise vocabulary so the picker can match it exactly.
     const name = buildVariationName(primaryMuscle, movementPattern);
+    // Store a reference (variation_id) to the live Variation record so template
+    // slots always reflect the current movement_pattern/primary_muscle — no
+    // stale snapshots to patch manually.
+    let variationId = null;
     try {
-      await base44.entities.Variation.create({
+      const created = await base44.entities.Variation.create({
         primary_muscle: primaryMuscle,
         movement_pattern: movementPattern,
         name,
       });
+      variationId = created?.id || null;
     } catch {}
     setSaving(false);
     onAdd({
       type: "variation",
+      variation_id: variationId,
       primary_muscle: primaryMuscle,
       movement_pattern: movementPattern,
       exercise_name: name,

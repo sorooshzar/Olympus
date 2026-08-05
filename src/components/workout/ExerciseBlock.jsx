@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
-import { MoreVertical, Trash2, GripVertical, StickyNote, RefreshCw, Timer, Link2, Unlink, Sparkles } from "lucide-react";
+import { MoreVertical, Trash2, GripVertical, StickyNote, RefreshCw, Timer, Link2, Unlink, Sparkles, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useVariations, resolveVariationSlot } from "./useVariations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +61,11 @@ export default function ExerciseBlock({
   const navigate = useNavigate();
   const notesDebounceRef = useRef(null);
 
+  // Live-reference: resolve the current movement_pattern/primary_muscle from the
+  // Variation record (by variation_id) instead of trusting the slot's snapshot.
+  const { data: variations = [] } = useVariations();
+  const { movementPattern: livePattern, primaryMuscle: liveMuscle } = resolveVariationSlot(exercise, variations);
+
   const isVariation = exercise.type === "variation";
   const isUnfilledVariation = isVariation && !exercise.exercise_id;
 
@@ -103,14 +109,20 @@ export default function ExerciseBlock({
           {isUnfilledVariation ? (
             <div className="min-w-0 flex flex-col gap-1 w-full">
               <span className={`self-start inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                MUSCLE_CATEGORY_STYLES[getMuscleCategory(exercise.primary_muscle)] || "bg-secondary text-muted-foreground"
+                MUSCLE_CATEGORY_STYLES[getMuscleCategory(liveMuscle)] || "bg-secondary text-muted-foreground"
               }`}>
-                {exercise.primary_muscle}
+                {liveMuscle}
               </span>
-              <div className="flex items-center gap-1.5 min-w-0">
+              <button
+                type="button"
+                onClick={() => setShowVariationPicker(true)}
+                className="flex items-center gap-1.5 min-w-0 text-left group/variation-title active:opacity-60"
+                title="Tap to see matching exercises"
+              >
                 <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="text-sm font-semibold truncate">{exercise.movement_pattern} Variation</span>
-              </div>
+                <span className="text-sm font-semibold truncate group-hover/variation-title:text-primary transition-colors">{livePattern} Variation</span>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0 group-hover/variation-title:text-primary transition-colors" />
+              </button>
             </div>
           ) : (
             <button
@@ -228,8 +240,8 @@ export default function ExerciseBlock({
 
       {showVariationPicker && (
         <VariationExercisePicker
-          primaryMuscle={exercise.primary_muscle}
-          movementPattern={exercise.movement_pattern}
+          primaryMuscle={liveMuscle}
+          movementPattern={livePattern}
           onSelect={handleVariationSelect}
           onClose={() => setShowVariationPicker(false)}
         />
