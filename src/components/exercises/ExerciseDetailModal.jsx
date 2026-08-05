@@ -62,10 +62,10 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose, workout
   }
 
   const graphMetrics = {
+    e1rm: { key: "e1rm", label: `Est. 1RM (${weightUnit})`, color: "#8b5cf6" },
     volume: { key: "volume", label: `Volume (${weightUnit})`, color: "hsl(var(--primary))" },
     reps: { key: "reps", label: "Max Reps", color: "#22c55e" },
     maxWeight: { key: "maxWeight", label: `Max Weight (${weightUnit})`, color: "#f59e0b" },
-    e1rm: { key: "e1rm", label: `Est. 1RM (${weightUnit})`, color: "#8b5cf6" },
   };
 
   if (!exercise) return null;
