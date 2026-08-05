@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Plus, Search, Library, Star, CheckCircle2, Link2 } from "lucide-react";
+import { X, Plus, Search, Library, Star, CheckCircle2, Link2, Crown } from "lucide-react";
 import MuscleGroupIcon from "@/components/utils/MuscleGroupIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import ExerciseFilters from "@/components/exercises/ExerciseFilters";
@@ -36,7 +36,7 @@ export default function ExerciseSelector() {
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState([]); // array of exercise objects in selection order
-  const [filters, setFilters] = useState({ muscleGroups: [], equipment: [], sort: "name", subMuscle: null });
+  const [filters, setFilters] = useState({ muscleGroups: [], equipment: [], sort: "name", subMuscle: null, ranked: false, favouritesOnly: false });
   const [showCreate, setShowCreate] = useState(false);
   const [detailExercise, setDetailExercise] = useState(null);
 
@@ -68,7 +68,8 @@ export default function ExerciseSelector() {
 
   let filtered = exercises.filter(ex => {
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filters.sort === "favourites" && !ex.is_favourite) return false;
+    if (filters.ranked && !ex.is_rankable) return false;
+    if (filters.favouritesOnly && !ex.is_favourite) return false;
     if (filters.subMuscle) {
       if ((ex.primary_muscle?.toLowerCase().trim() || "") !== filters.subMuscle.toLowerCase().trim()) return false;
     } else if (filters.muscleGroups.length > 0) {
@@ -86,7 +87,7 @@ export default function ExerciseSelector() {
     filtered = [...filtered].sort((a, b) => (freqMap[b.id] || 0) - (freqMap[a.id] || 0));
   }
 
-  const useGroups = !filters.sort || filters.sort === "name" || filters.sort === "favourites";
+  const useGroups = !filters.sort || filters.sort === "name";
   const grouped = {};
   filtered.forEach(ex => {
     const key = useGroups ? (ex.name[0]?.toUpperCase() || "#") : "Results";
@@ -197,6 +198,9 @@ export default function ExerciseSelector() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 ml-auto">
+                        {ex.is_rankable && (
+                          <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" fill="#FFD700" strokeWidth={1.5} />
+                        )}
                         <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
                           isSelected ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground"
                         }`}>

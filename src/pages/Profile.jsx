@@ -504,7 +504,9 @@ export default function Profile() {
       {rankModalMuscle && (
         <MuscleRankModal
           muscle={rankModalMuscle}
+          rankName={muscleRankNames[rankModalMuscle]}
           rankData={muscleRankDetails[rankModalMuscle]}
+          workoutLogs={workoutLogs}
           onClose={() => setRankModalMuscle(null)}
         />
       )}
