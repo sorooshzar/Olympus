@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
@@ -171,9 +171,9 @@ function PlateMode() {
     if (!target) return null;
     const targetVal = parseFloat(target);
     const sideWeight = (targetVal - barWeight) / 2;
+    if (sideWeight < 0) return { breakdown: [], sideWeight, remainder: 0 };
     const breakdown = [];
     let remaining = sideWeight;
-
     for (const plate of availablePlates) {
       const count = Math.floor(remaining / plate);
       if (count > 0) {
@@ -181,94 +181,94 @@ function PlateMode() {
         remaining -= plate * count;
       }
     }
-    return breakdown;
+    return { breakdown, sideWeight, remainder: remaining };
   };
 
-  const plates = calculatePlates();
-
-  // Plate width scaling: 55lb = 110%, 45lb = 100%, 35lb = 85%, etc.
-  const plateWidths = { 55: 110, 45: 100, 35: 85, 25: 70, 10: 50, 5: 35, 2.5: 25 };
-  // Plate height (thickness) with reductions
-  const plateHeights = { 55: "28.8px", 45: "28.8px", 35: "25.6px", 25: "22.4px", 10: "19.2px", 5: "16px", 2.5: "16px" };
+  const result = calculatePlates();
+  const plateHeights = { 55: 28, 45: 28, 35: 24, 25: 21, 10: 18, 5: 16, 2.5: 16 };
 
   return (
     <div className="space-y-4">
-      <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+      {/* Inputs */}
+      <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
         <div>
-          <label className="text-sm font-semibold mb-2 block">Bar Type</label>
-          <div className="flex gap-2">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2.5 block">Bar Type</label>
+          <div className="grid grid-cols-3 gap-2">
             {Object.entries(BAR_TYPES).map(([k, v]) => (
               <button key={k} onClick={() => setBarType(k)}
-                className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${barType === k ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
-                {v.name.split(" ")[0]} ({barWeight}{weightUnit})
+                className={`px-2 py-2.5 rounded-xl text-xs font-semibold transition-all ${barType === k ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                {v.name.split(" ")[0]}
               </button>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground mt-2 text-center">Bar weight: <span className="font-semibold text-foreground">{barWeight} {weightUnit}</span></p>
         </div>
+
         <div>
-          <label className="text-sm font-semibold mb-2 block">Target Total ({weightUnit})</label>
-          <input type="number" value={target} onChange={e => setTarget(e.target.value)}
-            placeholder={`e.g. ${weightUnit === "kg" ? "100" : "220"}`} className="w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm" />
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2.5 block">Target Total</label>
+          <div className="relative">
+            <input type="number" inputMode="decimal" value={target} onChange={e => setTarget(e.target.value)}
+              placeholder={weightUnit === "kg" ? "100" : "220"}
+              className="w-full bg-secondary border-0 rounded-xl px-4 py-3.5 text-lg font-bold pr-14 focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">{weightUnit}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="use55" checked={use55lb} onChange={e => setUse55lb(e.target.checked)} className="w-4 h-4 rounded" />
-          <label htmlFor="use55" className="text-sm font-semibold cursor-pointer">Include 55 lb plates</label>
-        </div>
+
+        <button onClick={() => setUse55lb(!use55lb)} className="w-full flex items-center justify-between bg-secondary rounded-xl px-4 py-3">
+          <span className="text-sm font-semibold">Include 55 lb plates</span>
+          <div className={`w-10 h-6 rounded-full transition-colors relative ${use55lb ? "bg-primary" : "bg-muted"}`}>
+            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${use55lb ? "left-[18px]" : "left-0.5"}`} />
+          </div>
+        </button>
       </div>
 
-      {plates && (
-        <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
-          <h3 className="font-semibold text-sm">Plate Loader Guide</h3>
-          
-          {/* Horizontal Plate Diagram */}
-          <div className="flex flex-col items-center justify-center gap-4 p-6 bg-secondary/30 rounded-xl">
-            {plates.map((p, idx) => (
-              <div key={idx} className="w-full flex flex-col gap-2 items-center">
-                {[...Array(p.count)].map((_, i) => {
-                  const width = `${plateWidths[p.plate]}%`;
-                  const height = plateHeights[p.plate];
-                  const bgColor = PLATE_COLORS[p.plate];
-                  
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        width,
-                        height,
-                        backgroundColor: bgColor,
-                        border: p.plate === 10 ? "2px solid #000" : "none",
-                        borderRadius: "12px",
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            ))}
+      {/* Results */}
+      {result && result.breakdown.length > 0 ? (
+        <div className="bg-card rounded-2xl border border-border p-5 space-y-5">
+          <div className="flex items-end justify-between border-b border-border pb-4">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total Weight</p>
+              <p className="text-3xl font-bold text-primary mt-0.5">{target} <span className="text-base text-muted-foreground font-semibold">{weightUnit}</span></p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Per side</p>
+              <p className="text-lg font-bold">{result.sideWeight.toFixed(1)} {weightUnit}</p>
+            </div>
           </div>
 
-          {/* Plate List */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase">Per Side</p>
-            <div className="space-y-1.5">
-              {plates.map(p => (
-                <div key={p.plate} className="flex items-center gap-3">
-                  <span className="font-bold text-lg min-w-12">{p.count}×</span>
-                  <div
-                    style={{
-                      width: "20px",
-                      height: "20px",
-                      backgroundColor: PLATE_COLORS[p.plate],
-                      borderRadius: "4px",
-                      border: p.plate === 10 ? "1px solid #000" : "none",
-                    }}
-                  />
-                  <span className="text-sm font-semibold">{p.plate} lbs</span>
+          {/* Plate visualization */}
+          <div className="flex items-end justify-center gap-1 py-2 min-h-[36px]">
+            {result.breakdown.flatMap((p, idx) =>
+              [...Array(p.count)].map((_, i) => (
+                <div key={`${idx}-${i}`}
+                  style={{ width: "14px", height: `${plateHeights[p.plate]}px`, backgroundColor: PLATE_COLORS[p.plate], border: p.plate === 10 ? "1px solid hsl(var(--border))" : "none", borderRadius: "6px" }}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Per-side breakdown */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Per Side</p>
+            <div className="space-y-2">
+              {result.breakdown.map(p => (
+                <div key={p.plate} className="flex items-center gap-3 bg-secondary/50 rounded-xl px-3 py-2.5">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[11px]" style={{ backgroundColor: PLATE_COLORS[p.plate], color: p.plate === 10 ? "#000" : "#fff" }}>{p.plate}</div>
+                  <span className="flex-1 text-sm font-semibold">{p.count} × {p.plate} {weightUnit}</span>
+                  <span className="text-sm text-muted-foreground font-medium">{(p.count * p.plate).toFixed(p.plate < 10 ? 1 : 0)} {weightUnit}</span>
                 </div>
               ))}
             </div>
+            {result.remainder > 0 && (
+              <p className="text-xs text-amber-500 mt-2 text-center">Can't load exact weight — {result.remainder.toFixed(2)} {weightUnit} left per side.</p>
+            )}
           </div>
         </div>
-      )}
+      ) : target && result && result.breakdown.length === 0 ? (
+        <div className="bg-card rounded-2xl border border-border p-8 text-center">
+          <p className="text-sm text-muted-foreground">No standard plate combination found for this target.</p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -361,61 +361,70 @@ function UnitConverter() {
 
   const units = UNIT_CONVERSIONS[category];
   const unitKeys = Object.keys(units);
-  const result = value
-    ? ((parseFloat(value) / units[fromUnit].factor) * units[toUnit].factor).toFixed(4)
-    : "";
+  const numValue = parseFloat(value);
+  const result = value && !isNaN(numValue)
+    ? (numValue / units[fromUnit].factor) * units[toUnit].factor
+    : null;
+
+  const swap = () => {
+    setFromUnit(toUnit);
+    setToUnit(fromUnit);
+    if (result != null) setValue(result.toFixed(4));
+  };
 
   return (
     <div className="space-y-4">
       {/* Category toggle */}
-      <div className="bg-card rounded-2xl border border-border p-5">
-        <div className="flex gap-2">
+      <div className="bg-card rounded-2xl border border-border p-2">
+        <div className="grid grid-cols-3 gap-1">
           {["weight", "volume", "length"].map(cat => (
             <button key={cat} onClick={() => { setCategory(cat); setValue(""); setFromUnit(Object.keys(UNIT_CONVERSIONS[cat])[0]); setToUnit(Object.keys(UNIT_CONVERSIONS[cat])[1]); }}
-              className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${category === cat ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+              className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${category === cat ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Single row conversion */}
+      {/* Conversion panels */}
       <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
-        <div className="grid grid-cols-5 gap-3 items-end">
-          <div className="flex flex-col items-center col-span-1">
-            <label className="text-xs font-semibold text-muted-foreground mb-1.5">Value</label>
-            <input type="number" value={value} onChange={e => setValue(e.target.value)}
-              placeholder="0" className="w-full bg-secondary border-0 rounded-lg px-3 py-2.5 text-sm text-center font-semibold" />
-          </div>
-          
-          <div className="flex flex-col items-center gap-1">
-            <label className="text-xs font-semibold text-muted-foreground">From</label>
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
+          {/* From */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">From</label>
+            <input type="number" inputMode="decimal" value={value} onChange={e => setValue(e.target.value)}
+              placeholder="0"
+              className="w-full bg-secondary border-0 rounded-xl px-3 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/40" />
             <select value={fromUnit} onChange={e => setFromUnit(e.target.value)}
-              className="w-full bg-secondary border-0 rounded-lg px-2 py-2.5 text-xs text-center font-medium">
-              {unitKeys.map(u => (
-                <option key={u} value={u}>{units[u].label}</option>
-              ))}
+              className="w-full bg-secondary border-0 rounded-xl px-3 py-2.5 text-sm font-semibold text-center focus:outline-none">
+              {unitKeys.map(u => <option key={u} value={u}>{units[u].label}</option>)}
             </select>
           </div>
 
-          <div className="text-center text-muted-foreground pb-2.5">→</div>
+          {/* Swap */}
+          <div className="flex items-center justify-center pt-6">
+            <button onClick={swap} className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 active:scale-90 transition-transform">
+              <ArrowLeftRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
 
-          <div className="flex flex-col items-center gap-1">
-            <label className="text-xs font-semibold text-muted-foreground">To</label>
+          {/* To */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">To</label>
+            <div className="w-full bg-primary/10 rounded-xl px-3 py-3 text-2xl font-bold text-center text-primary min-h-[52px] flex items-center justify-center">
+              {result != null ? result.toFixed(2) : "—"}
+            </div>
             <select value={toUnit} onChange={e => setToUnit(e.target.value)}
-              className="w-full bg-secondary border-0 rounded-lg px-2 py-2.5 text-xs text-center font-medium">
-              {unitKeys.map(u => (
-                <option key={u} value={u}>{units[u].label}</option>
-              ))}
+              className="w-full bg-secondary border-0 rounded-xl px-3 py-2.5 text-sm font-semibold text-center focus:outline-none">
+              {unitKeys.map(u => <option key={u} value={u}>{units[u].label}</option>)}
             </select>
           </div>
         </div>
 
-        {value && (
-          <div className="bg-primary/10 rounded-xl border border-primary/20 p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{parseFloat(result).toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{units[toUnit].label}</p>
-          </div>
+        {result != null && (
+          <p className="text-sm text-muted-foreground text-center pt-1">
+            <span className="font-semibold text-foreground">{value}</span> {units[fromUnit].label} = <span className="font-semibold text-primary">{result.toFixed(4)}</span> {units[toUnit].label}
+          </p>
         )}
       </div>
     </div>
@@ -425,14 +434,22 @@ function UnitConverter() {
 
 
 export default function Calculator() {
-  const [mode, setMode] = useState("Regular");
+  const [mode, setMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    return MODES.includes(t) ? t : "Regular";
+  });
+  const backTo = (() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("from") || "Lifts";
+  })();
 
   return (
     <div className="max-w-lg mx-auto pb-4">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-4 pt-5 pb-4 border-b border-border/30">
         <div className="flex items-center gap-3 mb-4">
-          <Link to={createPageUrl("Lifts")}>
+          <Link to={createPageUrl(backTo)}>
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>

@@ -3,7 +3,9 @@ import { base44 } from "@/api/base44Client";
 import { userStorage } from "@/components/utils/userStorage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, addDays, subDays } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Calculator } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import MacrosDashboard from "../components/macros/MacrosDashboard";
 import MacrosJournal from "../components/macros/MacrosJournal";
 import MacrosFoods from "../components/macros/MacrosFoods";
@@ -215,27 +217,35 @@ export default function Macros() {
       <div className="flex items-center justify-between mb-2.5">
         <h1 className="text-xl font-bold tracking-tight">Macros</h1>
 
-        {/* Compact date navigator */}
-        <div className="flex items-center gap-0.5 bg-secondary/70 rounded-xl px-1 py-0.5">
-          <button
-            onClick={goBack}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <button
-            onClick={() => setShowCalendar(true)}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg transition-colors"
-          >
-            <Calendar className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs font-semibold">{displayLabel}</span>
-          </button>
-          <button
-            onClick={goForward}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
+        <div className="flex items-center gap-1.5">
+          {/* Compact date navigator */}
+          <div className="flex items-center gap-0.5 bg-secondary/70 rounded-xl px-1 py-0.5">
+            <button
+              onClick={goBack}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg transition-colors"
+            >
+              <Calendar className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs font-semibold">{displayLabel}</span>
+            </button>
+            <button
+              onClick={goForward}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+          {/* Calculator shortcut — opens directly to Unit tab */}
+          <Link to={createPageUrl("Calculator?tab=Unit&from=Macros")}>
+            <button className="w-9 h-9 flex items-center justify-center bg-secondary/70 rounded-xl hover:bg-secondary transition-colors">
+              <Calculator className="w-5 h-5" />
+            </button>
+          </Link>
         </div>
       </div>
 
