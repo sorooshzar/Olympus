@@ -17,13 +17,15 @@ function timeAgo(iso) {
   return months === 1 ? "1 month ago" : `${months} months ago`;
 }
 
-export default function MuscleRankModal({ muscle, rankRecord, rankData, onClose }) {
+export default function MuscleRankModal({ muscle, rankRecord, onClose }) {
   const { unit, toDisplay } = useWeightUnit();
   const anchor = MUSCLE_ANCHOR[muscle] || "Best Exercise";
   const history = (rankRecord?.rank_history && Array.isArray(rankRecord.rank_history)) ? rankRecord.rank_history : [];
 
-  // displayed rank = best tier in the rolling window (from DB), fallback to rankData
-  const displayedName = rankRecord?.displayed_rank || rankRecord?.rank || (rankData?.rank?.name);
+  // displayed rank comes ONLY from the DB record, and only when there are
+  // events in the rolling window. A stale displayed_rank with empty history
+  // (legacy corruption) is ignored so the empty state renders instead.
+  const displayedName = (history.length > 0 && rankRecord?.displayed_rank) ? rankRecord.displayed_rank : null;
   const rank = displayedName ? RANK_BY_NAME[displayedName] : null;
 
   // Empty state — no rank at all

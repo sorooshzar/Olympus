@@ -3,47 +3,39 @@ import { X, FlaskConical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { RANKS, BASE_THRESHOLDS, MUSCLE_SCALE } from "@/components/utils/rankEngine";
+import { RANKS } from "@/components/utils/rankEngine";
+import { calculateExerciseRank, indexStandards } from "@/components/utils/strengthStandards";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 
-function epley(weight, reps, rir = 0) {
-  const effectiveReps = reps + rir;
-  if (effectiveReps < 1) return weight;
-  return weight * (1 + effectiveReps / 30);
-}
-
-function getRankForE1RM(e1rm, bodyWeightKg, muscleName) {
-  if (!bodyWeightKg || bodyWeightKg <= 0 || !muscleName) return null;
-  const ratio = e1rm / bodyWeightKg;
-  const scale = MUSCLE_SCALE[muscleName] || 0.7;
-  const thresholds = BASE_THRESHOLDS.map(t => t * scale);
-
-  let rankIndex = 0;
-  for (let i = 0; i < RANKS.length; i++) {
-    if (ratio >= thresholds[i]) rankIndex = i;
-    else break;
-  }
-  return RANKS[rankIndex];
-}
-
-export default function RankTester({ onClose, bodyWeightKg }) {
+// Rank Tester uses the SAME StrengthStandard engine as the backend
+// (calculateRanks) and WorkoutSummary: bodyweight-bracket thresholds in lb,
+// explicit tier order (olympian → bronze), kg→lb conversion. It does NOT use
+// the legacy ratio-based rankEngine thresholds.
+export default function RankTester({ onClose, bodyWeightKg, gender = "male" }) {
   const [search, setSearch] = useState("");
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState("0");
-  const { unit, toKg } = useWeightUnit();
+  const { unit, toKg, toDisplay } = useWeightUnit();
 
   const { data: exercises = [] } = useQuery({
-    queryKey: ["exercises-rank-tester"],
+    queryKey: ["exercises"],
     queryFn: () => base44.entities.Exercise.list(),
   });
 
-  // Only show exercises that have a muscle in MUSCLE_SCALE
+  const { data: standards = [] } = useQuery({
+    queryKey: ["strengthStandards"],
+    queryFn: () => base44.entities.StrengthStandard.list(),
+  });
+
+  const standardsMap = useMemo(() => indexStandards(standards), [standards]);
+
+  // Only show exercises that are rankable AND have a matching strength standard.
   const rankableExercises = useMemo(() =>
-    exercises.filter(ex => ex.primary_muscle && MUSCLE_SCALE[ex.primary_muscle]),
-    [exercises]
+    exercises.filter(ex => ex.is_rankable && ex.rankable_standard_name && standardsMap[ex.rankable_standard_name]),
+    [exercises, standardsMap]
   );
 
   const filtered = useMemo(() => {
@@ -59,9 +51,16 @@ export default function RankTester({ onClose, bodyWeightKg }) {
     const repsNum = parseInt(reps);
     const rirNum = parseInt(rir) || 0;
     if (!weightKg || !repsNum || repsNum < 1) return null;
-    const e1rm = epley(weightKg, repsNum, rirNum);
-    return getRankForE1RM(e1rm, bodyWeightKg || 80, selectedExercise.primary_muscle);
-  }, [selectedExercise, weight, reps, rir, bodyWeightKg, toKg]);
+    const standard = standardsMap[selectedExercise.rankable_standard_name];
+    if (!standard) return null;
+    // Epley with RIR: effective reps = reps + rir (matches the tester's intent;
+    // rir=0 reproduces the backend's raw-reps e1RM exactly).
+    const set = { weight: weightKg, reps: repsNum + rirNum, completed: true, type: "working" };
+    const bwKg = bodyWeightKg && bodyWeightKg > 0 ? bodyWeightKg : 80;
+    const result = calculateExerciseRank(selectedExercise, [set], standard, gender, bwKg, "kg");
+    if (!result.rank) return null;
+    return { tier: result.rank, e1rmKg: (result.best_metric || 0) / 2.20462, rankObj: RANKS.find(r => r.name === result.rank) };
+  }, [selectedExercise, weight, reps, rir, bodyWeightKg, gender, standardsMap, toKg]);
 
   const handleSelectExercise = (ex) => {
     setSelectedExercise(ex);
@@ -160,16 +159,17 @@ export default function RankTester({ onClose, bodyWeightKg }) {
         {rank ? (
           <div
             className="mt-2 rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-300"
-            style={{ backgroundColor: rank.color + "22", border: `2px solid ${rank.color}` }}
+            style={{ backgroundColor: rank.rankObj.color + "22", border: `2px solid ${rank.rankObj.color}` }}
           >
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shadow-lg"
-              style={{ backgroundColor: rank.color, color: rank.textColor }}
+              style={{ backgroundColor: rank.rankObj.color, color: rank.rankObj.textColor }}
             >
-              {rank.label[0]}
+              {rank.rankObj.label[0]}
             </div>
-            <p className="text-xl font-black tracking-wide" style={{ color: rank.color }}>{rank.label}</p>
-            <p className="text-xs text-muted-foreground text-center">{rank.description}</p>
+            <p className="text-xl font-black tracking-wide" style={{ color: rank.rankObj.color }}>{rank.rankObj.label}</p>
+            <p className="text-[11px] text-muted-foreground">Est. 1RM: {toDisplay(rank.e1rmKg).toFixed(1)} {unit}</p>
+            <p className="text-xs text-muted-foreground text-center">{rank.rankObj.description}</p>
           </div>
         ) : (
           <div className="mt-2 rounded-2xl p-5 flex flex-col items-center gap-2 bg-secondary/50 border border-border/40">
@@ -177,7 +177,7 @@ export default function RankTester({ onClose, bodyWeightKg }) {
               <FlaskConical className="w-7 h-7 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              {!selectedExercise ? "Select an exercise to get started" : "Enter weight and reps to see your rank"}
+              {!selectedExercise ? "Select a rankable exercise to get started" : "Enter weight and reps to see your rank"}
             </p>
           </div>
         )}

@@ -21,7 +21,6 @@ import { userStorage } from "@/components/utils/userStorage";
 import { useGoalWeight } from "@/components/utils/useGoalWeight";
 import TimelineSelect from "@/components/utils/TimelineSelect";
 import { computeRecovery } from "@/components/utils/recoveryEngine";
-import { computeMuscleRanks } from "@/components/utils/rankEngine";
 
 import MuscleRankModal from "../components/profile/MuscleRankModal";
 import RankTester from "../components/profile/RankTester";
@@ -249,9 +248,11 @@ export default function Profile() {
   // Convert database ranks to simple map — prefer displayed_rank (rolling window best)
   const dbMuscleRankMap = React.useMemo(() => {
     return dbMuscleRanks.reduce((acc, record) => {
-      const rankName = record.displayed_rank || record.rank;
-      if (record.muscle && rankName) {
-        acc[record.muscle] = rankName;
+      // Only color a muscle when it has events in the rolling window — a stale
+      // displayed_rank with empty history is ignored so cascade deletes show up.
+      const hasEvents = Array.isArray(record.rank_history) && record.rank_history.length > 0;
+      if (record.muscle && record.displayed_rank && hasEvents) {
+        acc[record.muscle] = record.displayed_rank;
       }
       return acc;
     }, {});
@@ -264,15 +265,10 @@ export default function Profile() {
     return m;
   }, [dbMuscleRanks]);
 
-  // Compute muscle ranks as fallback for client-side calculations
-  const muscleRankDetails = computeMuscleRanks(workoutLogs, latestWeightKg || 80);
-
-  const muscleRankNames = Object.keys(dbMuscleRankMap).length > 0
-    ? dbMuscleRankMap
-    : Object.keys(muscleRankDetails).reduce((acc, m) => {
-        acc[m] = muscleRankDetails[m].rank.name;
-        return acc;
-      }, {});
+  // DB is the single source of truth for the body model. No client-side
+  // fallback — the rank tables (calculateRanks) populate this on workout save
+  // and via backfill. After a cascade delete the muscle is correctly unranked.
+  const muscleRankNames = dbMuscleRankMap;
 
   // totalVolume always in kg for XP — never affected by unit toggle
   const totalVolume = workoutLogs.reduce((s, l) => s + (l.total_volume || 0), 0);
@@ -507,13 +503,12 @@ export default function Profile() {
       {showProfileInfo && <ProfileInfoPanel user={user} onClose={() => setShowProfileInfo(false)} xp={xp} profilePictureUrl={profilePictureUrl} />}
       {showAddTracker && <AddTrackerModal onClose={() => setShowAddTracker(false)} onAdded={refetchTrackers} />}
       {showRankTester && (
-        <RankTester onClose={() => setShowRankTester(false)} bodyWeightKg={latestWeightKg} />
+        <RankTester onClose={() => setShowRankTester(false)} bodyWeightKg={latestWeightKg} gender={user?.sex || "male"} />
       )}
       {rankModalMuscle && (
         <MuscleRankModal
           muscle={rankModalMuscle}
           rankRecord={dbMuscleRankRecord[rankModalMuscle]}
-          rankData={muscleRankDetails[rankModalMuscle]}
           onClose={() => setRankModalMuscle(null)}
         />
       )}
