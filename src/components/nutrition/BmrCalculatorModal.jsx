@@ -99,8 +99,9 @@ export default function BmrCalculatorModal({ onClose }) {
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-base">BMR Calculator</h2>
             <div className="flex items-center gap-1">
-              <button onClick={() => setShowInfo(v => !v)} className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary/80">
-                <Info className="w-3.5 h-3.5 text-muted-foreground" />
+              <button onClick={() => setShowInfo(v => !v)} className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                <Info className="w-3.5 h-3.5" />
+                What is BMR?
               </button>
               <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary/80">
                 <X className="w-3.5 h-3.5 text-muted-foreground" />
