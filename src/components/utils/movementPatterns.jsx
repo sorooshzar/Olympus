@@ -1,37 +1,81 @@
-// Mapping of primary muscle (canonical name) -> valid movement patterns.
-// Canonical names match getAllSubSections() so they stay consistent with the
-// muscle model / recovery engine. "Mid Back" is displayed with a clarifying
-// parenthetical but stored as "Mid Back".
-export const MUSCLE_MOVEMENT_PATTERNS = {
-  "Upper Chest": ["Incline Press", "Incline Fly"],
-  "Mid/Low Chest": ["Flat Press", "Decline Press", "Flat/Mid Fly", "Decline/Low Fly", "Chest Dip"],
-  "Lats": ["Frontal Pull", "Transverse Pull", "Sagittal Pull"],
-  "Traps": ["Shrug", "Upright Row", "Loaded Carry"],
-  "Mid Back": ["Transverse Pull", "Reverse Fly", "Face Pull"],
-  "Erectors": ["Hip Hinge", "Back Extension", "Anti-Flexion"],
-  "Front Delt": ["Overhead Press", "Front Raise"],
-  "Side Delt": ["Lateral Raise", "Upright Row"],
-  "Rear Delt": ["Reverse Fly", "Face Pull", "Rear Delt Row"],
-  "Biceps": ["Curl", "Lengthened Curl", "Shortened Curl"],
-  "Triceps": ["Extension", "Overhead Extension", "Tricep Press"],
-  "Quads": ["Leg Press/Squat", "Leg Extension"],
-  "Hamstrings": ["Leg Curl", "Hip Hinge", "Nordic Curl"],
-  "Glutes": ["Hip Thrust", "Hip Hinge", "Squat / Lunge", "Glute Kickback"],
-  "Adductors": ["Hip Adduction"],
-  "Abductors": ["Hip Abduction"],
-  "Calves": ["Calf Raise", "Calf Press"],
-  "Abs": ["Flexion", "Leg / Knee Raise", "Anti-Extension"],
-  "Obliques": ["Rotation / Twist", "Side Bend", "Anti-Rotation", "Anti-Lateral Flexion"],
-  "Wrist Flexor": ["Wrist Flexion", "Grip Strength"],
-  "Wrist Extensor": ["Reverse Wrist Curl"],
-  "Brachioradialis": ["Hammer Curl", "Reverse Curl"],
-  "Neck": ["Neck Flexion", "Neck Extension", "Lateral Neck Flexion"],
+// Master vocabulary of movement_pattern values, grouped by category for the
+// variation-creation dropdown. These strings MUST exactly match the
+// movement_pattern field stored on Exercise records — the variation exercise
+// picker matches on this field with strict string equality, so a mismatch here
+// means no exercises ever appear for the variation.
+export const MOVEMENT_PATTERNS_BY_CATEGORY = {
+  Pressing: ["Horizontal Press", "Incline Press", "Decline Press", "Overhead Press"],
+  Pulling: ["Vertical Pull", "Horizontal Pull", "Shoulder Extension"],
+  "Fly / Isolation Chest": [
+    "Shoulder Transverse Adduction",
+    "Shoulder Transverse Abduction",
+  ],
+  Shoulder: ["Shoulder Abduction", "Shoulder Extension"],
+  Arms: ["Elbow Flexion", "Elbow Extension"],
+  Legs: [
+    "Squat",
+    "Lunge",
+    "Hip Hinge",
+    "Hip Extension",
+    "Knee Extension",
+    "Knee Flexion",
+    "Hip Adduction",
+    "Hip Abduction",
+    "Plantar Flexion",
+    "Dorsi Flexion",
+  ],
+  Core: [
+    "Spinal Flexion",
+    "Spinal Extension",
+    "Spinal Lateral Flexion",
+    "Spinal Rotation",
+  ],
+  "Neck / Forearms": [
+    "Neck Flexion",
+    "Neck Extension",
+    "Neck Lateral Flexion",
+    "Wrist Flexion",
+    "Wrist Extension",
+  ],
 };
 
-export const getPatternsForMuscle = (muscle) => MUSCLE_MOVEMENT_PATTERNS[muscle] || [];
+// Flat, de-duplicated list of every valid movement_pattern.
+export const ALL_MOVEMENT_PATTERNS = [
+  ...new Set(Object.values(MOVEMENT_PATTERNS_BY_CATEGORY).flat()),
+];
 
-// Muscles that support movement patterns, in the order specified.
-export const PATTERN_MUSCLES = Object.keys(MUSCLE_MOVEMENT_PATTERNS);
+// Muscles that support variation slots. Kept so the muscle selector stays
+// stable and in a sensible order.
+export const PATTERN_MUSCLES = [
+  "Upper Chest",
+  "Mid/Low Chest",
+  "Lats",
+  "Traps",
+  "Mid Back",
+  "Erectors",
+  "Front Delt",
+  "Side Delt",
+  "Rear Delt",
+  "Biceps",
+  "Triceps",
+  "Quads",
+  "Hamstrings",
+  "Glutes",
+  "Adductors",
+  "Abductors",
+  "Calves",
+  "Abs",
+  "Obliques",
+  "Wrist Flexor",
+  "Wrist Extensor",
+  "Brachioradialis",
+  "Neck",
+];
+
+// Deprecated: returns the full vocabulary. Per-muscle filtering is now done
+// dynamically in AddVariationSheet by querying Exercise records, so the
+// dropdown only offers patterns that actually have matching exercises.
+export const getPatternsForMuscle = () => ALL_MOVEMENT_PATTERNS;
 
 export const getMuscleDisplayLabel = (muscle) =>
   muscle === "Mid Back" ? "Mid Back (rhomboids, mid traps)" : muscle;

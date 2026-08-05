@@ -3,17 +3,36 @@ import { X, Search, Library } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useExercises } from "@/components/hooks/useWorkoutData";
 import { getMuscleDisplayLabel } from "@/components/utils/movementPatterns";
+import { getMainGroupsForSubsection } from "@/components/utils/muscleHierarchy";
+
+// Two primary_muscle values are in the same family if they are equal or share a
+// parent muscle group (e.g. "Mid/Low Chest" and "Upper Chest" → both "Chest").
+function sameMuscleFamily(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const ga = getMainGroupsForSubsection(a);
+  const gb = getMainGroupsForSubsection(b);
+  return ga.some((g) => gb.includes(g));
+}
 
 export default function VariationExercisePicker({ primaryMuscle, movementPattern, onSelect, onClose }) {
   const [search, setSearch] = useState("");
   const { data: exercises = [], isLoading } = useExercises();
 
-  const filtered = exercises.filter((ex) => {
-    if ((ex.primary_muscle || "") !== primaryMuscle) return false;
-    if ((ex.movement_pattern || "") !== movementPattern) return false;
-    if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  // PRIMARY match: exact movement_pattern equality (string === string). Muscle
+  // group is a sort priority only — never a hard filter — so the user always
+  // sees every exercise sharing the movement pattern, muscle-family matches
+  // ranked first, then alphabetical by name.
+  const filtered = exercises
+    .filter((ex) => (ex.movement_pattern || "") === movementPattern)
+    .filter((ex) => !search || (ex.name || "").toLowerCase().includes(search.toLowerCase()))
+    .slice()
+    .sort((a, b) => {
+      const aFam = sameMuscleFamily(a.primary_muscle, primaryMuscle) ? 0 : 1;
+      const bFam = sameMuscleFamily(b.primary_muscle, primaryMuscle) ? 0 : 1;
+      if (aFam !== bFam) return aFam - bFam;
+      return (a.name || "").localeCompare(b.name || "");
+    });
 
   return (
     <div className="fixed inset-0 z-[60] bg-background flex flex-col">
