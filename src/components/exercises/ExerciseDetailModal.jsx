@@ -126,12 +126,19 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose, workout
                   </p>
                 </div>
               )}
-              {exercise.instructions && (
+              {exercise.instructions && exercise.instructions.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold mb-2">How to Perform</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {exercise.instructions}
-                  </p>
+                  <ul className="space-y-2">
+                    {exercise.instructions.map((step, i) => (
+                      <li key={i} className="text-sm text-muted-foreground leading-relaxed flex gap-2">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center mt-0.5">
+                          {i + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {exercise.secondary_muscles?.length > 0 && (

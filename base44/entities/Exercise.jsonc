@@ -52,8 +52,11 @@
       "description": "Standardized name for strength standard table lookup (only set when is_rankable=true)"
     },
     "instructions": {
-      "type": "string",
-      "description": "How to perform the exercise"
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Step-by-step instructions on how to perform the exercise"
     },
     "description": {
       "type": "string",
