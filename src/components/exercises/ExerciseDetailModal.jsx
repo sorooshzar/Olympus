@@ -81,14 +81,6 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose, workout
                 {exercise.primary_muscle?.replace(/_/g, " ")} • {exercise.category}
               </p>
             </div>
-            {onDelete && (
-              <button
-                onClick={() => { onClose(); onDelete(exercise); }}
-                className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
           </div>
         </DialogHeader>
 
@@ -221,6 +213,19 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose, workout
                   No workout data yet. Start training!
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Delete action — kept at the bottom, far from the close button */}
+          {onDelete && (
+            <div className="pt-4 mt-2 border-t border-border">
+              <button
+                onClick={() => { onClose(); onDelete(exercise); }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Exercise
+              </button>
             </div>
           )}
         </div>

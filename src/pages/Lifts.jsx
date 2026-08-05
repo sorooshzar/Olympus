@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Zap, Plus, FolderPlus, Dumbbell, History, Search, Library, ChevronRight, Archive, Calculator, Star, Bot } from "lucide-react";
+import { Zap, Plus, FolderPlus, Dumbbell, History, Search, Library, ChevronRight, Archive, Calculator, Star, Bot, Crown } from "lucide-react";
 import MuscleGroupIcon from "../components/utils/MuscleGroupIcon";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -395,6 +395,7 @@ function ExercisesTab() {
     equipment: [],
     sort: "name",
     subMuscle: submuscleParam || null,
+    ranked: false,
   });
   const [showCreate, setShowCreate] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
@@ -430,6 +431,7 @@ function ExercisesTab() {
 
   let filtered = exercises.filter(ex => {
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filters.ranked && !ex.is_rankable) return false;
     if (filters.sort === "favourites" && !ex.is_favourite) return false;
     // Direct sub-muscle filter from muscle map click — exact match only
     if (filters.subMuscle) {
@@ -526,6 +528,9 @@ function ExercisesTab() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-auto">
+                    {ex.is_rankable && (
+                      <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" fill="#FFD700" strokeWidth={1.5} />
+                    )}
                     <span className="bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded-md">
                       {equipmentAbbr}
                     </span>

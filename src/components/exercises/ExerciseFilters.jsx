@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, Check, ChevronDown } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, Crown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,9 +34,21 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
 
   const muscleCount = (filters.muscleGroups || []).length;
   const eqCount = (filters.equipment || []).length;
+  const rankedActive = !!filters.ranked;
 
   return (
     <div className="flex gap-2 items-center">
+      {/* Ranked toggle */}
+      <button
+        onClick={() => onFiltersChange({ ...filters, ranked: !rankedActive })}
+        className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
+          rankedActive ? "border-amber-400/50 bg-amber-400/15 text-amber-400" : "border-border bg-secondary text-muted-foreground"
+        }`}
+      >
+        <Crown className="w-3.5 h-3.5" fill={rankedActive ? "#FFD700" : "none"} strokeWidth={1.5} />
+        <span>Ranked</span>
+      </button>
+
       {/* Muscle Group Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
