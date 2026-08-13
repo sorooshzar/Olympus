@@ -98,7 +98,15 @@ export function calculateExerciseRank(exerciseMeta, sets, standard, userGender, 
   // 1RM standards are in lb; reps standards are unitless.
   // Per-dumbbell convention: the user logs per-hand weight, and we use it as-is
   // (never doubled) — the standards are per-hand too.
-  const toLb = (w) => weightUnit === "lbs" ? w : w * 2.20462;
+  //
+  // Set weights are ALWAYS stored in kg (DB base unit). The `weightUnit` arg is
+  // the user's DISPLAY unit, NOT the storage unit — so we must always convert
+  // kg → lb. Using the display unit to skip conversion was the bug: a lbs display
+  // unit made kg-stored sets skip conversion, halving the e1RM and producing
+  // wrong (too-low) tiers. The Rank Tester avoids this by pre-converting its
+  // input to kg and passing weightUnit="kg"; the real save path did not, so the
+  // two disagreed on identical input.
+  const toLb = (w) => w * 2.20462;
   const metricStd = standard.exercise_type === "1RM" ? toLb(metric) : metric;
   const bodyweightLb = bodyweightKg * 2.20462;
 

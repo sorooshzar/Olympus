@@ -203,7 +203,10 @@ export default function Profile() {
 
   const { data: bodyWeights = [] } = useQuery({
     queryKey: ["bodyWeights"],
-    queryFn: () => base44.entities.BodyWeight.filter({ created_by: user.email }, "-created_date", 50),
+    // Sort by measurement `date` (NOT created_date) so a backdated entry doesn't
+    // override a newer measurement — matches the calculateRanks backend, which
+    // also sorts by `-date`. Keeps the Rank Tester and save path on the same bodyweight.
+    queryFn: () => base44.entities.BodyWeight.filter({ created_by: user.email }, "-date", 50),
     enabled: !!user,
   });
 

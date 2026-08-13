@@ -69,7 +69,11 @@ function calculateExerciseRank(exerciseMeta, sets, standard, userGender, bodywei
     metric = maxReps;
   }
 
-  const toLb = (w) => weightUnit === "lbs" ? w : w * 2.20462;
+  // Set weights are ALWAYS stored in kg (DB base unit); 1RM standards are in lb.
+  // Always convert kg → lb. The `weightUnit` arg is the user's DISPLAY unit, not
+  // the storage unit — using it to skip conversion was the bug that made the
+  // real save path disagree with the Rank Tester on identical input.
+  const toLb = (w) => w * 2.20462;
   const metricStd = standard.exercise_type === "1RM" ? toLb(metric) : metric;
   const bodyweightLb = bodyweightKg * 2.20462;
 
