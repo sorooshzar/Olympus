@@ -1,6 +1,8 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Dumbbell, Trophy, Repeat } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { RANKS, MUSCLE_ANCHOR } from "@/components/utils/rankEngine";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 
@@ -21,6 +23,36 @@ export default function MuscleRankModal({ muscle, rankRecord, onClose }) {
   const { unit, toDisplay } = useWeightUnit();
   const anchor = MUSCLE_ANCHOR[muscle] || "Best Exercise";
   const history = (rankRecord?.rank_history && Array.isArray(rankRecord.rank_history)) ? rankRecord.rank_history : [];
+
+  // Fetch the WorkoutLogs referenced by the rank events so we can show the
+  // actual best set (reps × weight) that generated each rank, instead of a
+  // derived 1RM number. The events store workout_log_id + exercise_instance_index.
+  const logIds = Array.from(new Set(history.map(e => e.workout_log_id).filter(Boolean)));
+  const { data: eventLogs = [] } = useQuery({
+    queryKey: ["rankEventLogs", logIds.slice().sort().join(",")],
+    queryFn: () => base44.entities.WorkoutLog.filter({ id: { $in: logIds } }),
+    enabled: logIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+  const logById = {};
+  eventLogs.forEach(l => { logById[l.id] = l; });
+
+  // Find the completed working set with the highest Epley e1RM for this event's
+  // source exercise — the set that produced the rank. Set weights are stored in kg.
+  const bestSetForEvent = (ev) => {
+    const log = logById[ev.workout_log_id];
+    if (!log) return null;
+    const ex = (log.exercises || [])[ev.exercise_instance_index];
+    if (!ex || !ex.sets) return null;
+    let best = null;
+    ex.sets.forEach(s => {
+      if (!s.completed || s.type === "warmup") return;
+      if (!s.weight || !s.reps) return;
+      const e1rm = s.weight * (1 + s.reps / 30);
+      if (!best || e1rm > best.e1rm) best = { weight: s.weight, reps: s.reps, e1rm };
+    });
+    return best;
+  };
 
   // displayed rank comes ONLY from the DB record, and only when there are
   // events in the rolling window. A stale displayed_rank with empty history
@@ -135,9 +167,13 @@ export default function MuscleRankModal({ muscle, rankRecord, onClose }) {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-[10px] text-muted-foreground">{timeAgo(ev.date)}</p>
-                          {ev.estimated_1rm ? (
-                            <p className="text-[9px] text-muted-foreground/70">{toDisplay(ev.estimated_1rm).toFixed(0)} {unit}</p>
-                          ) : null}
+                          {(() => {
+                            const bs = bestSetForEvent(ev);
+                            if (!bs) return null;
+                            return (
+                              <p className="text-[9px] text-muted-foreground/70">{bs.reps}x{toDisplay(bs.weight)} {unit}</p>
+                            );
+                          })()}
                         </div>
                       </div>
                     );

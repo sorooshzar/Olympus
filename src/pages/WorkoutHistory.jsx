@@ -279,14 +279,33 @@ export default function WorkoutHistory() {
     const log = logs.find(l => l.id === logId) || selectedLog;
     if (!log) return;
     const updatedExercises = (log.exercises || []).map((ex, i) => i === exerciseIndex ? null : ex).filter(Boolean);
+    // Recompute totals from the REMAINING exercises (mirrors ActiveWorkoutSheet):
+    //   total_volume (kg) = sum(weight × reps) over completed sets
+    //   total_sets = count of completed non-warmup sets
+    // Set weights are stored in kg, so the sum is already in the storage unit.
+    let totalVolume = 0;
+    let totalSets = 0;
+    updatedExercises.forEach(ex => {
+      (ex.sets || []).forEach(s => {
+        if (s.completed) {
+          totalVolume += (s.weight || 0) * (s.reps || 0);
+          if (s.type !== "warmup") totalSets++;
+        }
+      });
+    });
+    const total_volume = Math.round(totalVolume);
     try {
-      await base44.entities.WorkoutLog.update(logId, { exercises: updatedExercises });
+      await base44.entities.WorkoutLog.update(logId, {
+        exercises: updatedExercises,
+        total_volume,
+        total_sets: totalSets,
+      });
       await base44.functions.invoke("calculateRanks", { workoutLogId: logId, rebuild: true });
     } catch (e) { console.error("exercise delete failed", e); }
     queryClient.invalidateQueries({ queryKey: ["workoutLogs"] });
     queryClient.invalidateQueries({ queryKey: ["userMuscleRanks"] });
     // Reflect the change in the open modal immediately.
-    setSelectedLog(prev => prev ? { ...prev, exercises: updatedExercises } : prev);
+    setSelectedLog(prev => prev ? { ...prev, exercises: updatedExercises, total_volume, total_sets: totalSets } : prev);
   };
 
   return (

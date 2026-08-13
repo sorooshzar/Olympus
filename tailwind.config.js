@@ -31,7 +31,7 @@ export default {
         rank: {
           wood: "#B8860B",
           bronze: "#CD7F32",
-          silver: "#E8E8E8",
+          silver: "#DCE1E9",
           gold: "#FFD700",
           emerald: "#50C878",
           diamond: "#00CED1",

@@ -1,7 +1,7 @@
 export const RANKS = [
   { name: "wood",     label: "Wood",     color: "#8B4513", textColor: "#fff", description: "Just getting started. Every rep counts — your foundation is being laid." },
   { name: "bronze",   label: "Bronze",   color: "#CD7F32", textColor: "#fff", description: "Novice lifter. You're building the neuromuscular patterns that lead to real strength." },
-  { name: "silver",   label: "Silver",   color: "#C0C0C0", textColor: "#222", description: "Intermediate. Consistent training is paying off — this muscle is responding to load." },
+  { name: "silver",   label: "Silver",   color: "#DCE1E9", textColor: "#222", description: "Intermediate. Consistent training is paying off — this muscle is responding to load." },
   { name: "gold",     label: "Gold",     color: "#FFD700", textColor: "#222", description: "Advanced. You're lifting more than most. This muscle is well-developed and strong." },
   { name: "emerald",  label: "Emerald",  color: "#50C878", textColor: "#fff", description: "Elite performance. You're in the top tier of dedicated gym-goers." },
   { name: "diamond",  label: "Diamond",  color: "#B9F2FF", textColor: "#222", description: "Top 5% of app users. Your strength here is exceptional and hard-earned." },
