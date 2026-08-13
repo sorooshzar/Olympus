@@ -38,7 +38,7 @@ export default function ActiveWorkoutSheet() {
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef(null);
   const dragStartY = useRef(null);
-  const { start: startRestTimer } = useRestTimer();
+  const { start: startRestTimer, skip: skipRestTimer } = useRestTimer();
   const sheetRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const miniBarDragStart = useRef(null);
@@ -155,10 +155,17 @@ export default function ActiveWorkoutSheet() {
   }, [updateWorkout]);
 
   const doFinish = async () => {
+    // Stop any running rest timer the moment the workout ends (countdown + sound).
+    skipRestTimer();
+
     const finished = new Date();
     const startTime = new Date(workout.startTime);
     const duration = Math.floor((finished - startTime) / 60000);
 
+    // Set weights are already stored in kg (SetTable converts the entered
+    // display value via toKg), so this sum is already in kg. Do NOT divide by
+    // 2.20462 again — that double-converted and halved total_volume for lbs
+    // users, making the stored volume disagree with the sets array.
     let totalVolume = 0;
     let totalSets = 0;
     workout.exercises.forEach(ex => {
@@ -170,9 +177,6 @@ export default function ActiveWorkoutSheet() {
       });
     });
 
-    const weightUnit = localStorage.getItem('gym-weight-unit') || 'kg';
-    const totalVolumeKg = weightUnit === 'lbs' ? totalVolume / 2.20462 : totalVolume;
-
     const logData = {
       name: workout.name,
       template_id: workout.template_id || null,
@@ -180,7 +184,7 @@ export default function ActiveWorkoutSheet() {
       finished_at: finished.toISOString(),
       duration_minutes: duration,
       exercises: workout.exercises,
-      total_volume: Math.round(totalVolumeKg),
+      total_volume: Math.round(totalVolume),
       total_sets: totalSets,
     };
 
@@ -355,7 +359,7 @@ export default function ActiveWorkoutSheet() {
         confirmLabel="Close Workout"
         cancelLabel="Cancel"
         confirmDestructive
-        onConfirm={() => { setShowCancelConfirm(false); endWorkout(); navigate("/Lifts"); }}
+        onConfirm={() => { setShowCancelConfirm(false); skipRestTimer(); endWorkout(); navigate("/Lifts"); }}
         onCancel={() => setShowCancelConfirm(false)}
       />
 

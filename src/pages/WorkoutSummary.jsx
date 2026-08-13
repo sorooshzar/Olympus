@@ -7,6 +7,7 @@ import { useWeightUnit } from "@/components/utils/useWeightUnit";
 import { base44 } from "@/api/base44Client";
 import { RANKS } from "@/components/utils/rankEngine";
 import { calculateExerciseRank, indexStandards } from "@/components/utils/strengthStandards";
+import { useRestTimer } from "../components/workout/RestTimerContext";
 
 function formatDuration(minutes) {
   if (!minutes) return "—";
@@ -19,6 +20,7 @@ export default function WorkoutSummary() {
   const navigate = useNavigate();
   const { completedLog, clearCompletedLog } = useActiveWorkout();
   const { unit: weightUnit, toDisplay } = useWeightUnit();
+  const { skip: skipRestTimer } = useRestTimer();
   const [loading, setLoading] = useState(false);
   const [displayLog, setDisplayLog] = useState(null);
   const [newMedals, setNewMedals] = useState([]);
@@ -118,6 +120,8 @@ export default function WorkoutSummary() {
   }, []); // run once on mount
 
   const handleDone = () => {
+    // Workout is over — clear any lingering rest timer (countdown + sound).
+    skipRestTimer();
     clearCompletedLog();
     navigate("/Lifts", { replace: true });
   };
