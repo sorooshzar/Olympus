@@ -25,6 +25,7 @@ import RankedInfoBanner from "../components/exercises/RankedInfoBanner";
 import CreateExerciseModal from "../components/exercises/CreateExerciseModal";
 import ExerciseDetailModal from "../components/exercises/ExerciseDetailModal";
 import { useInlineToast } from "@/components/ui/InlineToast";
+import AlphabeticalIndexBar from "../components/exercises/AlphabeticalIndexBar";
 import { useWorkoutFolders, useWorkoutTemplates, useExercises, useWorkoutLogs } from "../components/hooks/useWorkoutData";
 import { TABS, SPECIAL_FOLDERS } from "../components/utils/constants";
 import { MUSCLE_HIERARCHY } from "../components/utils/muscleHierarchy";
@@ -476,6 +477,13 @@ function ExercisesTab() {
     });
   }
 
+  // First letters present in the (filtered) list — drives the A-Z index bar
+  const availableLetters = new Set();
+  filtered.forEach((ex) => {
+    const c = (ex.name?.[0] || "").toUpperCase();
+    availableLetters.add(/[A-Z]/.test(c) ? c : "#");
+  });
+
   const EQUIPMENT_ABBREVIATIONS = { "barbell": "BB", "dumbbell": "DB", "machine": "MC", "smith_machine": "SM", "cable": "CA", "bodyweight": "BW", "band": "BD", "other": "--" };
 
   const useGroups = !filters.sort || filters.sort === "name";
@@ -509,10 +517,10 @@ function ExercisesTab() {
       {isLoading ? (
         <div className="space-y-2">{Array(6).fill(0).map((_, i) => <div key={i} className="h-14 bg-secondary/50 rounded-xl animate-in fade-in duration-700 repeat-infinite" style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />)}</div>
       ) : (
-        <div>
+        <div className={useGroups && !archivedView ? "pr-7" : ""}>
           {sortedKeys.map(key => (
             <div key={key}>
-              {useGroups && (<div className="py-1.5"><span className="text-xs font-bold text-primary">{key}</span></div>)}
+              {useGroups && (<div className="py-1.5" data-letter={key} style={{ scrollMarginTop: "calc(env(safe-area-inset-top) + 72px)" }}><span className="text-xs font-bold text-primary">{key}</span></div>)}
               {grouped[key]?.map(ex => {
                 const primaryMuscle = ex.primary_muscle?.replace(/_/g, " ") || "Unknown";
                 const equipmentAbbr = EQUIPMENT_ABBREVIATIONS[ex.category?.toLowerCase()] || "--";
@@ -555,6 +563,7 @@ function ExercisesTab() {
       <ExerciseDetailModal exercise={selectedExercise} isOpen={!!selectedExercise} onClose={() => setSelectedExercise(null)} workoutLogs={workoutLogs} onArchive={handleArchiveExercise} onUnarchive={handleUnarchiveExercise} />
 
       {toastEl}
+      {useGroups && !archivedView && <AlphabeticalIndexBar availableLetters={availableLetters} />}
     </div>
   );
 }
