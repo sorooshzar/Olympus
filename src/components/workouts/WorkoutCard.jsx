@@ -9,6 +9,7 @@ import {
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import IconPickerModal, { WorkoutIcon } from "./IconPickerModal";
+import PickerPopupShell from "./PickerPopupShell";
 
 const stop = (e) => e.stopPropagation();
 
@@ -121,25 +122,21 @@ export default function WorkoutCard({
       <IconPickerModal open={showIconPicker} current={template.icon || "Dumbbell"} accentColor={accentColor} onSelect={handleSelectIcon} onClose={() => setShowIconPicker(false)} />
 
       {showColorPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowColorPicker(false)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative bg-card border border-border rounded-2xl p-5 w-full max-w-xs shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-bold mb-4 text-center">Workout Color</h3>
-            <div className="grid grid-cols-5 gap-2.5">
-              {COLORS.map(color => {
-                const isSelected = accentColor === color;
-                return (
-                  <button key={color} onClick={() => handleSelectColor(color)} className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto" style={{ backgroundColor: color, boxShadow: isSelected ? `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${color}` : "none" }}>
-                    {isSelected && (<svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,6 4.5,9 10.5,3" /></svg>)}
-                  </button>
-                );
-              })}
-              <button onClick={() => handleSelectColor(null)} className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto border-2 border-border bg-secondary relative overflow-hidden" title="No color">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 text-muted-foreground/50" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="4" y1="4" x2="20" y2="20" /></svg>
-              </button>
-            </div>
+        <PickerPopupShell title="Customize" onClose={() => setShowColorPicker(false)}>
+          <div className="grid grid-cols-5 gap-2.5">
+            {COLORS.map(color => {
+              const isSelected = accentColor === color;
+              return (
+                <button key={color} onClick={() => handleSelectColor(color)} className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto" style={{ backgroundColor: color, boxShadow: isSelected ? `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${color}` : "none" }}>
+                  {isSelected && (<svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1.5,6 4.5,9 10.5,3" /></svg>)}
+                </button>
+              );
+            })}
+            <button onClick={() => handleSelectColor(null)} className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 mx-auto border-2 border-border bg-secondary relative overflow-hidden" title="No color">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-muted-foreground/50" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="4" y1="4" x2="20" y2="20" /></svg>
+            </button>
           </div>
-        </div>
+        </PickerPopupShell>
       )}
 
       {showShareSheet && (<ShareWorkoutSheet template={template} onClose={() => setShowShareSheet(false)} />)}

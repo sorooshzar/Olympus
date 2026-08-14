@@ -4,6 +4,7 @@ import {
   Bike, Timer, Swords, Rocket, Sun, Moon, Wind, Snowflake,
   Leaf, Footprints, HandMetal, Activity, Crosshair, RefreshCw, Bolt,
 } from "lucide-react";
+import PickerPopupShell from "./PickerPopupShell";
 
 // ─── Minimalist muscle SVG icons ───────────────────────────────────────────
 const ChestIcon = (props) => (
@@ -144,77 +145,30 @@ export default function IconPickerModal({ open, current, accentColor, onSelect, 
   const accent = accentColor || "hsl(var(--primary))";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative bg-card border border-border rounded-2xl p-5 w-full max-w-xs shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-sm font-bold mb-4 text-center">Workout Icon</h3>
-
-        <div className="overflow-y-auto max-h-80 space-y-5 pr-0.5">
-
-          {/* MUSCLES */}
-          <div>
-            <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-2.5">
-              Muscles
-            </p>
-            <div className="grid grid-cols-5 gap-2">
-              {MUSCLE_ICONS.map(({ key, label, Icon }) => {
-                const isSelected = selected === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => { onSelect(key); onClose(); }}
-                    className={`h-11 rounded-xl flex items-center justify-center p-2 transition-all active:scale-90 ${
-                      isSelected
-                        ? "ring-2 ring-offset-1 ring-primary bg-primary/10"
-                        : "bg-secondary hover:bg-secondary/70"
-                    }`}
-                    title={label}
-                  >
-                    <Icon
-                      className="w-full h-full"
-                      style={{ color: isSelected ? accent : "hsl(var(--foreground) / 0.5)" }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ICONS */}
-          <div>
-            <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-2.5">
-              Icons
-            </p>
-            <div className="grid grid-cols-5 gap-2">
-              {GENERAL_ICONS.map((name) => {
-                const Icon = ICON_MAP[name];
-                const isSelected = selected === name;
-                return (
-                  <button
-                    key={name}
-                    onClick={() => { onSelect(name); onClose(); }}
-                    className={`h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
-                      isSelected
-                        ? "ring-2 ring-offset-1 ring-primary bg-primary/10"
-                        : "bg-secondary hover:bg-secondary/70"
-                    }`}
-                    title={name}
-                  >
-                    <Icon
-                      className="w-5 h-5"
-                      style={{ color: isSelected ? accent : "hsl(var(--foreground) / 0.5)" }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-        </div>
+    <PickerPopupShell title="Customize" onClose={onClose}>
+      <div className="grid grid-cols-5 gap-2.5 max-h-72 overflow-y-auto pr-0.5">
+        {GENERAL_ICONS.map((name) => {
+          const Icon = ICON_MAP[name];
+          const isSelected = selected === name;
+          return (
+            <button
+              key={name}
+              onClick={() => { onSelect(name); onClose(); }}
+              className={`h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+                isSelected
+                  ? "ring-2 ring-offset-1 ring-primary bg-primary/10"
+                  : "bg-secondary hover:bg-secondary/70"
+              }`}
+              title={name}
+            >
+              <Icon
+                className="w-5 h-5"
+                style={{ color: isSelected ? accent : "hsl(var(--foreground) / 0.5)" }}
+              />
+            </button>
+          );
+        })}
       </div>
-    </div>
+    </PickerPopupShell>
   );
 }
