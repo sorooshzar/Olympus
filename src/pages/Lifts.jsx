@@ -517,7 +517,7 @@ function ExercisesTab() {
       {isLoading ? (
         <div className="space-y-2">{Array(6).fill(0).map((_, i) => <div key={i} className="h-14 bg-secondary/50 rounded-xl animate-in fade-in duration-700 repeat-infinite" style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />)}</div>
       ) : (
-        <div className={useGroups && !archivedView ? "pr-7" : ""}>
+        <div data-exercise-list>
           {sortedKeys.map(key => (
             <div key={key}>
               {useGroups && (<div className="py-1.5" data-letter={key} style={{ scrollMarginTop: "calc(env(safe-area-inset-top) + 72px)" }}><span className="text-xs font-bold text-primary">{key}</span></div>)}

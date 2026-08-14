@@ -1,23 +1,47 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useLayoutEffect } from "react";
 
 const LETTERS = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
+// Visible letters are ~14px; the touch zone is wider so the user can grab
+// the scrubber from anywhere near the right edge (iOS Contacts style).
+const TOUCH_WIDTH = 34;
 
 /**
- * iOS-style A-Z letter scrubber. Only meant for the alphabetical exercises view.
+ * iOS-style A-Z letter scrubber for the alphabetical exercises view.
+ * It is a fixed overlay hugging the right edge of the list — it does NOT
+ * take part in layout, so exercise rows keep their full width behind it.
+ *
  * - TAP a letter → smooth-scrolls to the first exercise under that letter.
- * - SLIDE up/down → continuously scrubs through the alphabet.
- * Active letter highlights in the accent color while touched; returns to muted on release.
- * Letters with no matching exercises are dimmed; tapping them snaps to the nearest present letter.
+ * - SLIDE up/down anywhere in the touch zone → continuously scrubs the alphabet.
+ * The active letter highlights in the accent color while touched; returns to
+ * muted on release. Letters with no matching exercises are dimmed; tapping one
+ * snaps to the nearest present letter.
  */
 export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
   const barRef = useRef(null);
   const [active, setActive] = useState(null);
   const touchedRecently = useRef(false);
 
+  // Position the bar at the list's right edge, starting where the list content
+  // begins (below search / New / filter row). Re-measured every render so it
+  // tracks layout shifts (e.g. the ranked info banner toggling) and on resize.
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const list = document.querySelector("[data-exercise-list]");
+    if (!bar || !list) return;
+    const measure = () => {
+      const r = list.getBoundingClientRect();
+      // r.top is viewport-relative; add scrollY to get the fixed top at scroll 0.
+      bar.style.top = `${Math.round(r.top + window.scrollY)}px`;
+      bar.style.left = `${Math.round(r.right - TOUCH_WIDTH)}px`;
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  });
+
   const scrollToLetter = useCallback((letter) => {
     let target = document.querySelector(`[data-letter="${letter}"]`);
     if (!target) {
-      // Snap to nearest present letter
       const idx = LETTERS.indexOf(letter);
       for (let d = 1; d < LETTERS.length; d++) {
         const hi = idx + d, lo = idx - d;
@@ -51,7 +75,7 @@ export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
     setTimeout(() => { touchedRecently.current = false; }, 400);
   };
   const onClick = (e) => {
-    if (touchedRecently.current) return; // avoid double-fire after touch
+    if (touchedRecently.current) return;
     const l = letterFromY(e.clientY);
     if (!l) return;
     setActive(l);
@@ -66,13 +90,8 @@ export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       onClick={onClick}
-      className="fixed z-30 flex flex-col items-center justify-between py-1 select-none touch-none cursor-pointer"
-      style={{
-        right: "max(8px, calc(50% - 252px))",
-        top: "calc(env(safe-area-inset-top) + 76px)",
-        bottom: "calc(env(safe-area-inset-bottom) + 72px)",
-        width: "16px",
-      }}
+      className="fixed z-30 flex flex-col items-end gap-0 py-1 select-none touch-none cursor-pointer"
+      style={{ width: `${TOUCH_WIDTH}px` }}
     >
       {LETTERS.map((l) => {
         const present = availableLetters.has(l);
@@ -80,7 +99,7 @@ export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
         return (
           <span
             key={l}
-            className={`leading-none transition-colors text-[10px] ${isActive ? "text-primary font-bold" : present ? "text-muted-foreground/60" : "text-muted-foreground/20"}`}
+            className={`leading-[10px] text-[9px] font-medium transition-colors ${isActive ? "text-primary font-bold" : present ? "text-muted-foreground/60" : "text-muted-foreground/20"}`}
           >
             {l}
           </span>
