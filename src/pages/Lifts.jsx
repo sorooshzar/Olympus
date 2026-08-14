@@ -24,6 +24,7 @@ import ExerciseFilters from "../components/exercises/ExerciseFilters";
 import RankedInfoBanner from "../components/exercises/RankedInfoBanner";
 import CreateExerciseModal from "../components/exercises/CreateExerciseModal";
 import ExerciseDetailModal from "../components/exercises/ExerciseDetailModal";
+import { useInlineToast } from "@/components/ui/InlineToast";
 import { useWorkoutFolders, useWorkoutTemplates, useExercises, useWorkoutLogs } from "../components/hooks/useWorkoutData";
 import { TABS, SPECIAL_FOLDERS } from "../components/utils/constants";
 import { MUSCLE_HIERARCHY } from "../components/utils/muscleHierarchy";
@@ -396,13 +397,13 @@ function WorkoutsTab({ folders, templates, queryClient, navigate, startWorkout, 
 function ExercisesTab() {
   const [search, setSearch] = useState("");
   const location = useLocation();
-  const [exerciseToDelete, setExerciseToDelete] = useState(null);
+  const { showToast, element: toastEl } = useInlineToast();
 
   const urlParams = new URLSearchParams(location.search);
   const submuscleParam = urlParams.get("submuscle") ? decodeURIComponent(urlParams.get("submuscle")) : null;
 
   const [filters, setFilters] = useState({
-    muscleGroups: [], equipment: [], sort: "name", subMuscle: submuscleParam || null, ranked: false, favouritesOnly: false,
+    muscleGroups: [], equipment: [], sort: "name", subMuscle: submuscleParam || null, ranked: false, favouritesOnly: false, archived: false,
   });
   const [showCreate, setShowCreate] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
@@ -413,6 +414,17 @@ function ExercisesTab() {
 
   const freqMap = {};
   workoutLogs.forEach(log => { log.exercises?.forEach(ex => { if (ex.exercise_id) freqMap[ex.exercise_id] = (freqMap[ex.exercise_id] || 0) + 1; }); });
+  // Most recent performance date per exercise (for "Most Recent" sort)
+  const recencyMap = {};
+  workoutLogs.forEach(log => {
+    const d = log.started_at || log.finished_at;
+    if (!d) return;
+    log.exercises?.forEach(ex => {
+      if (!ex.exercise_id) return;
+      const cur = recencyMap[ex.exercise_id];
+      if (!cur || new Date(d) > new Date(cur)) recencyMap[ex.exercise_id] = d;
+    });
+  });
 
   const toggleFavourite = (e, ex) => {
     e.stopPropagation();
@@ -420,15 +432,20 @@ function ExercisesTab() {
     base44.entities.Exercise.update(ex.id, { is_favourite: !ex.is_favourite });
   };
 
-  const handleDeleteExercise = async () => {
-    if (!exerciseToDelete) return;
-    await base44.entities.Exercise.delete(exerciseToDelete.id);
+  const handleArchiveExercise = async (ex) => {
+    await base44.entities.Exercise.update(ex.id, { is_archived: true });
     queryClient.invalidateQueries({ queryKey: ["exercises"] });
-    setExerciseToDelete(null);
-    setSelectedExercise(null);
+    showToast("Exercise archived");
+  };
+  const handleUnarchiveExercise = async (ex) => {
+    await base44.entities.Exercise.update(ex.id, { is_archived: false });
+    queryClient.invalidateQueries({ queryKey: ["exercises"] });
+    showToast("Exercise unarchived");
   };
 
+  const archivedView = !!filters.archived;
   let filtered = exercises.filter(ex => {
+    if (archivedView ? !ex.is_archived : ex.is_archived) return false;
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filters.ranked && !ex.is_rankable) return false;
     if (filters.favouritesOnly && !ex.is_favourite) return false;
@@ -451,6 +468,12 @@ function ExercisesTab() {
 
   if (filters.sort === "frequency") {
     filtered = [...filtered].sort((a, b) => (freqMap[b.id] || 0) - (freqMap[a.id] || 0));
+  } else if (filters.sort === "recency") {
+    filtered = [...filtered].sort((a, b) => {
+      const da = recencyMap[a.id] ? new Date(recencyMap[a.id]).getTime() : 0;
+      const db = recencyMap[b.id] ? new Date(recencyMap[b.id]).getTime() : 0;
+      return db - da; // most recent first; never-performed (0) sink to bottom
+    });
   }
 
   const EQUIPMENT_ABBREVIATIONS = { "barbell": "BB", "dumbbell": "DB", "machine": "MC", "smith_machine": "SM", "cable": "CA", "bodyweight": "BW", "band": "BD", "other": "--" };
@@ -494,7 +517,7 @@ function ExercisesTab() {
                 const primaryMuscle = ex.primary_muscle?.replace(/_/g, " ") || "Unknown";
                 const equipmentAbbr = EQUIPMENT_ABBREVIATIONS[ex.category?.toLowerCase()] || "--";
                 return (
-                  <button key={ex.id} onClick={() => setSelectedExercise(ex)} className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
+                  <button key={ex.id} onClick={() => setSelectedExercise(ex)} className={`w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors text-left ${archivedView ? "opacity-50" : ""}`}>
                     <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                       <MuscleGroupIcon muscle={ex.primary_muscle} size={26} className="text-muted-foreground" />
                     </div>
@@ -505,9 +528,15 @@ function ExercisesTab() {
                     <div className="flex items-center gap-2 ml-auto">
                       {ex.is_rankable && (<Crown className="w-4 h-4 text-amber-400 flex-shrink-0" fill="#FFD700" strokeWidth={1.5} />)}
                       <span className="bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded-md">{equipmentAbbr}</span>
-                      <button onClick={(e) => toggleFavourite(e, ex)} className="p-1 rounded-lg hover:bg-secondary transition-colors flex-shrink-0">
-                        <Star className={`w-4 h-4 ${ex.is_favourite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`} />
-                      </button>
+                      {archivedView ? (
+                        <button onClick={(e) => { e.stopPropagation(); handleUnarchiveExercise(ex); }} className="text-xs font-semibold text-primary px-2 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0">
+                          Unarchive
+                        </button>
+                      ) : (
+                        <button onClick={(e) => toggleFavourite(e, ex)} className="p-1 rounded-lg hover:bg-secondary transition-colors flex-shrink-0">
+                          <Star className={`w-4 h-4 ${ex.is_favourite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`} />
+                        </button>
+                      )}
                     </div>
                   </button>
                 );
@@ -523,22 +552,9 @@ function ExercisesTab() {
         </div>
       )}
       <CreateExerciseModal open={showCreate} onClose={() => setShowCreate(false)} />
-      <ExerciseDetailModal exercise={selectedExercise} isOpen={!!selectedExercise} onClose={() => setSelectedExercise(null)} workoutLogs={workoutLogs} onDelete={(ex) => setExerciseToDelete(ex)} />
+      <ExerciseDetailModal exercise={selectedExercise} isOpen={!!selectedExercise} onClose={() => setSelectedExercise(null)} workoutLogs={workoutLogs} onArchive={handleArchiveExercise} onUnarchive={handleUnarchiveExercise} />
 
-      {exerciseToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4 sm:items-center" onClick={() => setExerciseToDelete(null)}>
-          <div className="bg-card w-full max-w-sm rounded-2xl border border-border p-5 space-y-4" onClick={e => e.stopPropagation()}>
-            <div>
-              <h3 className="font-bold text-base">Delete "{exerciseToDelete.name}"?</h3>
-              <p className="text-sm text-muted-foreground mt-1">This will permanently delete this exercise and cannot be undone.</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setExerciseToDelete(null)} className="flex-1 py-2.5 rounded-xl bg-secondary text-sm font-semibold">Cancel</button>
-              <button onClick={handleDeleteExercise} className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {toastEl}
     </div>
   );
 }

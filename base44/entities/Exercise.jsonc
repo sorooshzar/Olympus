@@ -71,6 +71,11 @@
       "default": false,
       "description": "Whether this exercise is marked as a favourite by the user"
     },
+    "is_archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this exercise is archived (hidden from the default list). Archiving is a visibility toggle only \u2014 no history or rank data is removed."
+    },
     "male_impressiveness_factor": {
       "type": "number",
       "description": "Factor for calculating impressiveness score for male lifters (default 100)"

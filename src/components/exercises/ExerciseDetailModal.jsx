@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { X, BookOpen, BarChart3, Trash2 } from "lucide-react";
+import { X, BookOpen, BarChart3, Archive, ArchiveRestore } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
@@ -13,7 +13,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
-export default function ExerciseDetailModal({ exercise, isOpen, onClose, workoutLogs = [], onDelete }) {
+export default function ExerciseDetailModal({ exercise, isOpen, onClose, workoutLogs = [], onArchive, onUnarchive }) {
   const [tab, setTab] = useState("learn");
   const [graphMode, setGraphMode] = useState("e1rm");
   const { unit: weightUnit, toDisplay } = useWeightUnit();
@@ -223,16 +223,26 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose, workout
             </div>
           )}
 
-          {/* Delete action — kept at the bottom, far from the close button */}
-          {onDelete && (
+          {/* Archive / Unarchive — kept at the bottom, far from the close button */}
+          {onArchive && (
             <div className="pt-4 mt-2 border-t border-border">
-              <button
-                onClick={() => { onClose(); onDelete(exercise); }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Exercise
-              </button>
+              {exercise.is_archived ? (
+                <button
+                  onClick={() => { onClose(); onUnarchive?.(exercise); }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <ArchiveRestore className="w-4 h-4" />
+                  Unarchive Exercise
+                </button>
+              ) : (
+                <button
+                  onClick={() => { onClose(); onArchive(exercise); }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground hover:bg-secondary transition-colors"
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive Exercise
+                </button>
+              )}
             </div>
           )}
         </div>

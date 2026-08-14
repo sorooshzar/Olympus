@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, Check, ChevronDown, Crown, Star } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, Crown, Star, Archive } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
   const eqCount = (filters.equipment || []).length;
   const rankedActive = !!filters.ranked;
   const favActive = !!filters.favouritesOnly;
+  const archivedActive = !!filters.archived;
 
   return (
     <div className="flex gap-2 items-center">
@@ -161,6 +162,16 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
         }`}
       >
         <Star className="w-3.5 h-3.5" fill={favActive ? "#FFD700" : "none"} strokeWidth={1.5} />
+      </button>
+
+      {/* Archived toggle */}
+      <button
+        onClick={() => onFiltersChange({ ...filters, archived: !archivedActive })}
+        className={`flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
+          archivedActive ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
+        }`}
+      >
+        <Archive className="w-3.5 h-3.5" />
       </button>
     </div>
   );
