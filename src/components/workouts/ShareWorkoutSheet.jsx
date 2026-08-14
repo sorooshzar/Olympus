@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { UserPlus, Link, ClipboardList, ChevronRight, X } from "lucide-react";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 import { WorkoutIcon } from "./IconPickerModal";
@@ -83,9 +84,10 @@ export default function ShareWorkoutSheet({ template, onClose }) {
     },
   ];
 
-  return (
+  return createPortal(
     <>
-      {/* Centered modal overlay */}
+      {/* Centered modal overlay — portaled to document.body so transformed
+          ancestors (folder/workout card) can't clip `position: fixed`. */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onClose}>
         <div className="absolute inset-0 bg-black/60" />
         <div
@@ -149,6 +151,7 @@ export default function ShareWorkoutSheet({ template, onClose }) {
           {toastMsg}
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }
