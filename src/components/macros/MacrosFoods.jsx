@@ -258,6 +258,7 @@ export default function MacrosFoods({ macroGoals, dailyTotals, date, addingMeal,
       {showScan && (
         <ScanFoodModal
           onClose={() => setShowScan(false)}
+          onResult={handleScanResult}
         />
       )}
 

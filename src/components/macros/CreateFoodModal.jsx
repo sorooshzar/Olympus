@@ -178,7 +178,17 @@ export default function CreateFoodModal({ onClose, onCreate, prefill = null }) {
       >
         {/* Header */}
         <div className="sticky top-0 flex items-center justify-between px-4 py-4 border-b border-border bg-background/95 backdrop-blur z-10">
-          <h1 className="text-lg font-bold">Create Food</h1>
+          <div className="flex items-center gap-3">
+            {prefill?.image_url && (
+              <img
+                src={prefill.image_url}
+                alt=""
+                className="w-9 h-9 rounded-lg object-cover border border-border"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            )}
+            <h1 className="text-lg font-bold">Create Food</h1>
+          </div>
           <button onClick={onClose} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
