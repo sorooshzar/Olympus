@@ -50,21 +50,14 @@ function WorkoutsTab({ folders, templates, queryClient, navigate, startWorkout, 
   const containerRef = useRef(null);
 
   // Sync from props when not dragging
-  const [dragInfoState, setDragInfoState] = useState(null);
-
-  const isOpen = (folderId) => {
-    if (dragInfoState?.kind === "folder" && dragInfoState.id !== folderId) return false; // collapse others during folder drag
-    return !!openFolders[folderId];
-  };
+  const isOpen = (folderId) => !!openFolders[folderId];
 
   const { bindBar, ghost, indicator, dragInfo } = useLiftsDrag({
     containerRef,
     onDrop,
     isOpen,
+    onDragStart: (kind) => { if (kind === "folder") setOpenFolders({}); },
   });
-
-  // mirror dragInfo into state so the sync effect can read it without re-running mid-drag
-  useEffect(() => { setDragInfoState(dragInfo); }, [dragInfo]);
 
   useEffect(() => {
     if (dragInfo) return; // don't resync while a drag is in progress
@@ -289,7 +282,8 @@ function WorkoutsTab({ folders, templates, queryClient, navigate, startWorkout, 
               data-lift-id={t.id}
               data-lift-folder=""
               {...bindBar({ kind: "workout", id: t.id, name: t.name, sub: `${setCountOf(t)} ${setCountOf(t) === 1 ? "Set" : "Sets"}`, accent: t.color, iconName: t.icon })}
-              style={{ touchAction: "none", opacity: isItemDragging ? 0.4 : 1, transition: "opacity .15s" }}
+              className="select-none"
+              style={{ opacity: isItemDragging ? 0.4 : 1, transition: "opacity .15s" }}
             >
               <motion.div
                 initial={{ opacity: 0, y: 8 }}

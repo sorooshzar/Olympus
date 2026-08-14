@@ -30,7 +30,7 @@ export default function FolderCard({
 
   return (
     <div
-      className={`bg-card rounded-xl border border-border overflow-hidden transition-shadow ${
+      className={`bg-card rounded-xl border border-border overflow-hidden transition-shadow select-none ${
         headerDragging ? "shadow-2xl" : ""
       }`}
       data-lift="top"
@@ -38,7 +38,7 @@ export default function FolderCard({
       data-lift-id={folder.id}
       data-lift-isheader="1"
       {...headerHandlers}
-      style={{ touchAction: "none", opacity: headerDragging ? 0.45 : 1, transition: "opacity .15s" }}
+      style={{ opacity: headerDragging ? 0.45 : 1, transition: "opacity .15s" }}
     >
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -48,12 +48,11 @@ export default function FolderCard({
       >
         {/* Folder Header */}
         <div className="flex items-center w-full p-3 gap-3">
-          <button onClick={(e) => { stop(e); onToggleOpen && onToggleOpen(); }} onPointerDown={stop} className="flex-shrink-0">
+          <button onClick={(e) => { stop(e); onToggleOpen && onToggleOpen(); }} className="flex-shrink-0">
             {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           </button>
           <button
             onClick={(e) => { stop(e); onToggleOpen && onToggleOpen(); }}
-            onPointerDown={stop}
             className="flex-1 flex items-center gap-3 min-w-0"
           >
             <FolderOpen className="w-5 h-5 text-primary flex-shrink-0" />
@@ -119,7 +118,8 @@ export default function FolderCard({
                       data-lift-id={template.id}
                       data-lift-folder={folder.id}
                       {...handlers}
-                      style={{ touchAction: "none", opacity: isItemDragging ? 0.4 : 1, transition: "opacity .15s" }}
+                      className="select-none"
+                      style={{ opacity: isItemDragging ? 0.4 : 1, transition: "opacity .15s" }}
                     >
                       <WorkoutCard
                         template={template}

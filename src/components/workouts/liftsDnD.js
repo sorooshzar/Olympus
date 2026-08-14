@@ -1,28 +1,31 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const LONG_PRESS_MS = 380;
-const MOVE_THRESHOLD = 10; // px to cancel long-press (treat as scroll/tap)
+const HOLD_MS = 400;
+const MOVE_THRESHOLD = 10; // px of movement before HOLD_MS cancels the hold (treat as scroll/tap)
 const EDGE_ZONE = 80; // px from top/bottom that triggers auto-scroll
 const EDGE_MAX_SPEED = 14; // px per frame at the very edge
 
-// Custom long-press drag-and-drop for the Lifts page.
-// - One flat hit-test pass over rendered bars (data-lift attrs) -> drop slots.
-// - Folder drag: only top-level gaps are valid; other folders force-collapse.
-// - Workout drag: top-level gaps (-> standalone) + interior gaps of OPEN folders.
-// - GPU transforms via fixed-position ghost; auto-scroll near viewport edges.
-export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
+// Long-press drag-and-drop for the Lifts page.
+// SCROLL SAFETY: bars do NOT set touch-action:none. Before the 400ms hold fires,
+// no touch events are prevented -> the browser scrolls normally. Only after the
+// hold fires (finger still for 400ms) does drag mode engage and a non-passive
+// capture touchmove listener begin calling preventDefault to stop scrolling.
+// RELEASE SAFETY: pointerup, pointercancel, touchend AND touchcancel all end the
+// drag; clear() is idempotent so duplicate events are harmless.
+export function useLiftsDrag({ containerRef, onDrop, isOpen, onDragStart }) {
   const [ghost, setGhost] = useState(null); // { descriptor, y, left, width }
   const [indicator, setIndicator] = useState(null); // { y, left, width }
 
   const onDropRef = useRef(onDrop); onDropRef.current = onDrop;
+  const onDragStartRef = useRef(onDragStart); onDragStartRef.current = onDragStart;
   const isOpenRef = useRef(isOpen); isOpenRef.current = isOpen;
 
   const s = useRef({
     active: false, pointerId: null, startX: 0, startY: 0, timer: null,
     descriptor: null, offsetY: 0, lastY: 0, raf: 0, scrollRaf: 0, el: null,
-    pre: null, bound: false,
+    pre: null, bound: null,
   });
-  const targetRef = useRef(null); // current drop slot
+  const targetRef = useRef(null);
   const onUpRef = useRef(null);
 
   const computeTarget = useCallback((clientY) => {
@@ -34,7 +37,6 @@ export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
     const topEls = Array.from(container.querySelectorAll('[data-lift="top"]'));
     if (!topEls.length) { targetRef.current = null; setIndicator(null); return; }
 
-    // Build top-level "blocks": folders span header..last-child; workouts span themselves.
     const blocks = topEls.map(el => {
       const r = el.getBoundingClientRect();
       if (el.dataset.liftIsheader === "1") {
@@ -48,12 +50,11 @@ export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
     });
 
     const gaps = [];
-    // Top-level gaps (valid for both folder + workout drags)
     for (let k = 0; k <= blocks.length; k++) {
       const y = k === 0 ? blocks[0].top : blocks[k - 1].bottom;
       gaps.push({ kind: "top", index: k, y });
     }
-    // Interior gaps of open folders (valid only for workout drags)
+    // interior gaps of OPEN folders, only when dragging a workout
     if (st.descriptor && st.descriptor.kind === "workout") {
       for (const b of blocks) {
         if (b.kind !== "folder") continue;
@@ -61,9 +62,7 @@ export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
         const childEls = Array.from(container.querySelectorAll(`[data-lift-folder="${b.id}"]`));
         if (childEls.length) {
           for (let j = 0; j <= childEls.length; j++) {
-            const y = j === 0
-              ? childEls[0].getBoundingClientRect().top
-              : childEls[j - 1].getBoundingClientRect().bottom;
+            const y = j === 0 ? childEls[0].getBoundingClientRect().top : childEls[j - 1].getBoundingClientRect().bottom;
             gaps.push({ kind: "folder", folderId: b.id, index: j, y });
           }
         } else {
@@ -101,6 +100,38 @@ export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
     st.scrollRaf = requestAnimationFrame(step);
   }, [computeTarget]);
 
+  const clear = useCallback(() => {
+    const st = s.current;
+    if (st.timer) { clearTimeout(st.timer); st.timer = null; }
+    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
+    if (st.scrollRaf) { cancelAnimationFrame(st.scrollRaf); st.scrollRaf = 0; }
+    if (st.pre) {
+      window.removeEventListener("pointermove", st.pre.move);
+      window.removeEventListener("pointerup", st.pre.up);
+      window.removeEventListener("pointercancel", st.pre.up);
+      st.pre = null;
+    }
+    if (st.bound) {
+      window.removeEventListener("pointermove", st.bound.move);
+      if (onUpRef.current) {
+        window.removeEventListener("pointerup", onUpRef.current);
+        window.removeEventListener("pointercancel", onUpRef.current);
+      }
+      window.removeEventListener("touchmove", st.bound.touchMove, { capture: true });
+      window.removeEventListener("touchend", st.bound.touchEnd, { capture: true });
+      window.removeEventListener("touchcancel", st.bound.touchEnd, { capture: true });
+      st.bound = null;
+    }
+    document.body.style.userSelect = "";
+    st.active = false;
+    st.descriptor = null;
+    st.el = null;
+    st.pointerId = null;
+    targetRef.current = null;
+    setGhost(null);
+    setIndicator(null);
+  }, []);
+
   const onMove = useCallback((e) => {
     const st = s.current;
     if (!st.active || e.pointerId !== st.pointerId) return;
@@ -114,96 +145,78 @@ export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
     });
   }, [computeTarget, containerRef]);
 
-  const onTouchMove = useCallback((e) => {
-    if (s.current.active) { e.preventDefault(); e.stopImmediatePropagation(); }
-  }, []);
-
-  const clear = useCallback(() => {
-    const st = s.current;
-    if (st.timer) { clearTimeout(st.timer); st.timer = null; }
-    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
-    if (st.scrollRaf) { cancelAnimationFrame(st.scrollRaf); st.scrollRaf = 0; }
-    if (st.pre) {
-      window.removeEventListener("pointermove", st.pre.move);
-      window.removeEventListener("pointerup", st.pre.up);
-      window.removeEventListener("pointercancel", st.pre.up);
-      st.pre = null;
-    }
-    if (st.bound) {
-      window.removeEventListener("pointermove", onMove);
-      if (onUpRef.current) {
-        window.removeEventListener("pointerup", onUpRef.current);
-        window.removeEventListener("pointercancel", onUpRef.current);
-      }
-      window.removeEventListener("touchmove", onTouchMove, { capture: true });
-      st.bound = false;
-    }
-    document.body.style.userSelect = "";
-    try { if (st.el && st.el.releasePointerCapture) st.el.releasePointerCapture(st.pointerId); } catch {}
-    st.active = false; st.descriptor = null; st.el = null; st.pointerId = null;
-    targetRef.current = null;
-    setGhost(null); setIndicator(null);
-  }, [onMove, onTouchMove]);
-
   const onUp = useCallback((e) => {
     const st = s.current;
-    if (!st.active || e.pointerId !== st.pointerId) return;
+    if (!st.active) return;
+    if (e && e.pointerId !== undefined && e.pointerId !== st.pointerId) return;
     const target = targetRef.current;
     const descriptor = st.descriptor;
-    // swallow the click that follows a drag so taps don't fire
+    // swallow the synthetic click that follows a hold+drag so taps don't fire
     const kill = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
     window.addEventListener("click", kill, { capture: true, once: true });
-    setTimeout(() => window.removeEventListener("click", kill, { capture: true }), 400);
+    setTimeout(() => window.removeEventListener("click", kill, { capture: true }), 500);
     clear();
     if (target && descriptor) onDropRef.current({ source: descriptor, target });
   }, [clear]);
   onUpRef.current = onUp;
+
+  // Safety nets: prevent page scroll during an active drag, and force-end on any touch end/cancel
+  const onTouchMove = useCallback((e) => {
+    if (s.current.active) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, []);
+  const onTouchEnd = useCallback(() => {
+    if (s.current.active && onUpRef.current) onUpRef.current();
+  }, []);
 
   const beginDrag = useCallback((e) => {
     const st = s.current;
     st.timer = null;
     st.active = true;
     document.body.style.userSelect = "none";
-    // remove pre-drag listeners
     if (st.pre) {
       window.removeEventListener("pointermove", st.pre.move);
       window.removeEventListener("pointerup", st.pre.up);
       window.removeEventListener("pointercancel", st.pre.up);
       st.pre = null;
     }
-    try { st.el.setPointerCapture(st.pointerId); } catch {}
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
     window.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
-    st.bound = true;
+    window.addEventListener("touchend", onTouchEnd, { capture: true });
+    window.addEventListener("touchcancel", onTouchEnd, { capture: true });
+    st.bound = { move: onMove, touchMove: onTouchMove, touchEnd: onTouchEnd };
     const cRect = containerRef.current.getBoundingClientRect();
+    // offsetY = where on the bar the finger pressed; ghost top = clientY - offsetY keeps the
+    // finger at that same spot on the bar as it moves (bar rides under the finger, not above it)
     setGhost({ descriptor: st.descriptor, y: e.clientY - st.offsetY, left: cRect.left, width: cRect.width });
     computeTarget(e.clientY);
     edgeScroll();
-  }, [onMove, onUp, onTouchMove, computeTarget, edgeScroll, containerRef]);
+    if (onDragStartRef.current) onDragStartRef.current(st.descriptor.kind, st.descriptor.id);
+  }, [onMove, onUp, onTouchMove, onTouchEnd, computeTarget, edgeScroll, containerRef]);
 
   const bindBar = useCallback((descriptor) => ({
     onPointerDown: (e) => {
-      if (e.button !== undefined && e.button !== 0) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
       const st = s.current;
-      if (st.active) return;
+      // A workout inside a folder bubbles its pointerdown to the folder's handler too.
+      // Guard so only the innermost bar starts a hold (prevents orphaned timers that
+      // fired regardless of movement — the "scroll picks up a folder" bug).
+      if (st.active || st.pre || st.timer) return;
       st.pointerId = e.pointerId;
       st.startX = e.clientX; st.startY = e.clientY;
       st.descriptor = descriptor;
       st.lastY = e.clientY;
-      const el = e.currentTarget;
-      st.el = el;
-      const r = el.getBoundingClientRect();
+      st.el = e.currentTarget;
+      const r = e.currentTarget.getBoundingClientRect();
       st.offsetY = e.clientY - r.top;
 
       const preMove = (ev) => {
         if (ev.pointerId !== st.pointerId) return;
-        const dx = ev.clientX - st.startX, dy = ev.clientY - st.startY;
-        if (Math.hypot(dx, dy) > MOVE_THRESHOLD) cancelPre();
+        if (Math.hypot(ev.clientX - st.startX, ev.clientY - st.startY) > MOVE_THRESHOLD) cancelPre();
       };
       const preUp = (ev) => {
-        if (ev.pointerId !== st.pointerId) return;
+        if (ev && ev.pointerId !== undefined && ev.pointerId !== st.pointerId) return;
         cancelPre();
       };
       const cancelPre = () => {
@@ -217,7 +230,7 @@ export function useLiftsDrag({ containerRef, onDrop, isOpen }) {
       window.addEventListener("pointermove", preMove);
       window.addEventListener("pointerup", preUp);
       window.addEventListener("pointercancel", preUp);
-      st.timer = setTimeout(() => beginDrag(e), LONG_PRESS_MS);
+      st.timer = setTimeout(() => beginDrag(e), HOLD_MS);
     },
   }), [beginDrag]);
 
