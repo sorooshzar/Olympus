@@ -187,7 +187,7 @@ export default function ExerciseSelector() {
                       }`}>
                         {isSelected
                           ? <CheckCircle2 className="w-4 h-4 text-primary" />
-                          : <MuscleGroupIcon muscle={ex.primary_muscle} size={16} className="text-muted-foreground" />
+                          : <MuscleGroupIcon muscle={ex.primary_muscle} size={26} className="text-muted-foreground" />
                         }
                       </div>
                       <div className="flex-1 min-w-0">

@@ -496,7 +496,7 @@ function ExercisesTab() {
                 return (
                   <button key={ex.id} onClick={() => setSelectedExercise(ex)} className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
                     <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                      <MuscleGroupIcon muscle={ex.primary_muscle} size={16} className="text-muted-foreground" />
+                      <MuscleGroupIcon muscle={ex.primary_muscle} size={26} className="text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{ex.name}</p>
