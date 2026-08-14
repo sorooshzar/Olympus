@@ -1,11 +1,13 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 // Shared shell for the Lifts "Customize" popups (icon + colour pickers).
-// Provides the backdrop, a centered rounded card, a header title, and an X
-// close button so users can dismiss without making a change.
+// Rendered through a portal to document.body so it escapes any transformed
+// ancestor (framer-motion layout animations make `position: fixed` clip to the
+// folder/workout card) and always overlays the full viewport.
 export default function PickerPopupShell({ title = "Customize", onClose, children, maxWidth = "max-w-xs" }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
@@ -24,6 +26,7 @@ export default function PickerPopupShell({ title = "Customize", onClose, childre
         </div>
         <div className="p-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
