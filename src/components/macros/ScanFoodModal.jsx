@@ -133,10 +133,28 @@ export default function ScanFoodModal({ onClose, onResult }) {
     };
   }, [mode]);
 
-  const switchMode = (m) => {
+  // Safety: ensure the camera stream is alive before (re)starting detection.
+  // If tracks ended or the stream was lost, re-init the camera from scratch so
+  // the camera never stays broken after a mode switch.
+  const ensureCamera = async () => {
+    const cm = cameraRef.current;
+    const s = cm.stream;
+    const alive = s && s.getTracks().some((t) => t.readyState === "live" && !t.ended);
+    if (alive && videoRef.current && videoRef.current.srcObject) return;
+    try {
+      await cm.start(videoRef.current, "environment");
+      setStream(cm.stream);
+    } catch (e) {
+      setStatus("error");
+    }
+  };
+
+  const switchMode = async (m) => {
+    if (m === mode) return;
     barcodeLockRef.current = false;
     labelActiveRef.current = false;
     setStatus("scanning");
+    await ensureCamera();
     setMode(m);
   };
 
