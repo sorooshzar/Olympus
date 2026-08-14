@@ -1,110 +1,41 @@
-import React, { useState, useEffect } from "react";
-import { UserPlus, Link, ClipboardList, ChevronRight, Check, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import React, { useState, useRef, useEffect } from "react";
+import { UserPlus, Link, ClipboardList, ChevronRight, X } from "lucide-react";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
-import { useToast } from "@/components/ui/use-toast";
 import { WorkoutIcon } from "./IconPickerModal";
 
-// ── Sub-views ──────────────────────────────────────────────────────────────
-
-function SendToFriendView({ template, currentUser, onBack }) {
-  const [friendships, setFriendships] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sentTo, setSentTo] = useState(null);
-  const [sending, setSending] = useState(null);
-
-  useEffect(() => {
-    base44.entities.Friendship.list().then(all => {
-      const accepted = all.filter(
-        f => f.status === "accepted" &&
-          (f.requester_email === currentUser.email || f.recipient_email === currentUser.email)
-      );
-      setFriendships(accepted);
-      setLoading(false);
-    });
-  }, [currentUser.email]);
-
-  const handleSend = async (friendship) => {
-    const friendEmail =
-      friendship.requester_email === currentUser.email
-        ? friendship.recipient_email
-        : friendship.requester_email;
-    const friendName =
-      friendship.requester_email === currentUser.email
-        ? friendship.recipient_username
-        : friendship.requester_username;
-
-    setSending(friendship.id);
-    await base44.entities.WorkoutTemplate.create({
-      name: template.name,
-      exercises: template.exercises,
-      color: template.color,
-      icon: template.icon,
-      notes: template.notes,
-      shared_from_email: currentUser.email,
-      shared_from_name: currentUser.full_name,
-    });
-    setSending(null);
-    setSentTo(friendship.id);
-  };
-
-  return (
-    <div>
-      <button onClick={onBack} className="text-xs text-muted-foreground mb-4 flex items-center gap-1 active:opacity-60">
-        ← Back
-      </button>
-      <p className="text-sm font-semibold mb-3">Send to a friend</p>
-      {loading ? (
-        <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-      ) : friendships.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">No friends yet. Add some first!</p>
-      ) : (
-        <div className="space-y-2">
-          {friendships.map(f => {
-            const isSent = sentTo === f.id;
-            const isSending = sending === f.id;
-            const name = f.requester_email === currentUser.email ? f.recipient_username : f.requester_username;
-            return (
-              <button
-                key={f.id}
-                onClick={() => !isSent && handleSend(f)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-secondary/60 active:bg-secondary transition-colors"
-              >
-                <span className="text-sm font-medium">{name || "Friend"}</span>
-                {isSending ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                ) : isSent ? (
-                  <span className="text-xs text-green-500 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Sent!</span>
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Main Sheet ─────────────────────────────────────────────────────────────
-
 export default function ShareWorkoutSheet({ template, onClose }) {
-  const [view, setView] = useState("main"); // "main" | "friend"
-  const [currentUser, setCurrentUser] = useState(null);
   const { unit, toDisplay } = useWeightUnit();
-  const { toast } = useToast();
   const accentColor = template.color || null;
 
+  // Self-contained, auto-dismissing toast (no reliance on the global toaster).
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
+  const hideTimer = useRef(null);
+  const unmountTimer = useRef(null);
+
+  const showToast = (msg) => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (unmountTimer.current) clearTimeout(unmountTimer.current);
+    setToastMsg(msg);
+    // mount + fade in next tick so the transition runs
+    requestAnimationFrame(() => setToastVisible(true));
+    hideTimer.current = setTimeout(() => {
+      setToastVisible(false); // CSS fade-out
+      unmountTimer.current = setTimeout(() => setToastMsg(""), 300); // unmount after fade
+    }, 2200);
+  };
+
   useEffect(() => {
-    base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (unmountTimer.current) clearTimeout(unmountTimer.current);
+    };
   }, []);
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/Lifts?shared=${template.id}`;
-    navigator.clipboard.writeText(url);
-    toast({ description: "Link copied!" });
-    onClose();
+    navigator.clipboard?.writeText(url);
+    showToast("Link copied!");
   };
 
   const handleCopyText = () => {
@@ -119,9 +50,13 @@ export default function ShareWorkoutSheet({ template, onClose }) {
       });
       lines.push("");
     });
-    navigator.clipboard.writeText(lines.join("\n").trim());
-    toast({ description: "Copied!" });
-    onClose();
+    navigator.clipboard?.writeText(lines.join("\n").trim());
+    showToast("Copied!");
+  };
+
+  const handleShareToFriend = () => {
+    // Feature not built yet — do NOT create any workout copy or records.
+    showToast("Sharing with friends is coming soon!");
   };
 
   const options = [
@@ -130,7 +65,7 @@ export default function ShareWorkoutSheet({ template, onClose }) {
       icon: <UserPlus className="w-5 h-5" />,
       label: "Send to a friend",
       sub: "They can add it to their routines",
-      onTap: () => setView("friend"),
+      onTap: handleShareToFriend,
     },
     {
       key: "link",
@@ -149,63 +84,71 @@ export default function ShareWorkoutSheet({ template, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60" />
-      <div
-        className="relative w-full max-w-lg bg-card rounded-t-3xl px-5 pt-3 pb-10 animate-in slide-in-from-bottom duration-300"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Drag handle */}
-        <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-5" />
+    <>
+      {/* Centered modal overlay */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/60" />
+        <div
+          className="relative w-full max-w-md bg-card rounded-3xl p-5 pt-6 pb-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-secondary/70 flex items-center justify-center active:bg-secondary transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
 
-        {view === "friend" && currentUser ? (
-          <SendToFriendView
-            template={template}
-            currentUser={currentUser}
-            onBack={() => setView("main")}
-          />
-        ) : (
-          <>
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-6">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: accentColor ? accentColor + "22" : "hsl(var(--primary)/0.1)" }}
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-5 pr-10">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: accentColor ? accentColor + "22" : "hsl(var(--primary)/0.1)" }}
+            >
+              <WorkoutIcon
+                name={template.icon}
+                className="w-5 h-5"
+                style={{ color: accentColor ? accentColor + "cc" : "hsl(var(--primary))" }}
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-base truncate">{template.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(template.exercises || []).length} exercise{(template.exercises || []).length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+
+          {/* Options */}
+          <div className="space-y-2">
+            {options.map(opt => (
+              <button
+                key={opt.key}
+                onClick={opt.onTap}
+                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-secondary/60 active:bg-secondary transition-colors text-left"
               >
-                <WorkoutIcon
-                  name={template.icon}
-                  className="w-5 h-5"
-                  style={{ color: accentColor ? accentColor + "cc" : "hsl(var(--primary))" }}
-                />
-              </div>
-              <div>
-                <p className="font-semibold text-base">{template.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(template.exercises || []).length} exercise{(template.exercises || []).length !== 1 ? "s" : ""}
-                </p>
-              </div>
-            </div>
-
-            {/* Options */}
-            <div className="space-y-2">
-              {options.map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={opt.onTap}
-                  className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-secondary/60 active:bg-secondary transition-colors text-left"
-                >
-                  <span className="text-primary flex-shrink-0">{opt.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{opt.label}</p>
-                    <p className="text-xs text-muted-foreground">{opt.sub}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+                <span className="text-primary flex-shrink-0">{opt.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{opt.label}</p>
+                  <p className="text-xs text-muted-foreground">{opt.sub}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Slim auto-dismissing toast */}
+      {toastMsg && (
+        <div
+          className={`fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full bg-foreground text-background text-sm font-medium shadow-lg transition-opacity duration-300 ${toastVisible ? "opacity-100" : "opacity-0"}`}
+        >
+          {toastMsg}
+        </div>
+      )}
+    </>
   );
 }
