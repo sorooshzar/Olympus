@@ -62,13 +62,20 @@ export default function ActiveWorkoutSheet() {
     enabled: !!workout,
   });
 
-  // Build map: exercise_id -> last completed sets (from most recent log first)
+  // Build map: exercise_id -> array of most-recent-completed-set per slot index.
+  // Iterates logs from most recent backwards; for each set index, the first
+  // log where that slot was completed: true wins. Incomplete sets are skipped.
   const prevSetsMap = {};
   workoutLogs.forEach(log => {
     log.exercises?.forEach(ex => {
-      if (ex.exercise_id && !prevSetsMap[ex.exercise_id]) {
-        prevSetsMap[ex.exercise_id] = ex.sets || [];
-      }
+      if (!ex.exercise_id) return;
+      if (!prevSetsMap[ex.exercise_id]) prevSetsMap[ex.exercise_id] = [];
+      const slots = prevSetsMap[ex.exercise_id];
+      (ex.sets || []).forEach((set, idx) => {
+        if (slots[idx] === undefined && set.completed) {
+          slots[idx] = { weight: set.weight, reps: set.reps };
+        }
+      });
     });
   });
 

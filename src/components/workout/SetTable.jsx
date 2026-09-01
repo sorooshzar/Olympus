@@ -34,8 +34,8 @@ function calc1RM(weight, reps) {
 
 /* ── grid layout ───────────────────────────────────────── */
 // [set 26px] [prev flex] [kg 52px] [reps 44px] [rir 36px] [1rm% 32px] [check? 28px]
-const GRID      = "grid-cols-[26px_1fr_52px_44px_36px_32px]";
-const GRID_ACTIVE = "grid-cols-[26px_1fr_52px_44px_36px_32px_28px]";
+const GRID        = "grid-cols-[24px_1fr_48px_40px_32px_28px]";
+const GRID_ACTIVE = "grid-cols-[24px_1fr_48px_40px_32px_28px_24px]";
 
 /* ── swipeable row ─────────────────────────────────────── */
 const SWIPE_THRESHOLD = 80;
@@ -311,7 +311,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
     <>
       <div className="space-y-0.5">
         {/* Header */}
-        <div className={`grid gap-1 px-1 items-center mb-1 ${isActive ? GRID_ACTIVE : GRID}`}>
+        <div className={`grid gap-0.5 px-0.5 items-center mb-1 ${isActive ? GRID_ACTIVE : GRID}`}>
           <span className="text-[10px] font-semibold text-muted-foreground text-center">SET</span>
           <span className="text-[10px] font-semibold text-muted-foreground text-center">PREVIOUS</span>
           <span className="text-[10px] font-semibold text-muted-foreground text-center">{weightUnit.toUpperCase()}</span>
@@ -328,7 +328,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
             const prev = previousSets[index];
             const prevDisplayWeight = prev?.weight ? toDisplay(prev.weight) : 0;
             const prevLabel = prev && (prev.weight || prev.reps)
-              ? `${prevDisplayWeight}×${prev.reps || 0} ${weightUnit}`
+              ? `${prev.reps || 0}×${prevDisplayWeight}${weightUnit}`
               : "—";
 
             const current1RM = calc1RM(set.weight, set.reps);
@@ -367,7 +367,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
                     </div>
                   )}
 
-                  <div className={`grid gap-1 px-1 py-1 items-center rounded-lg transition-colors ${isActive ? GRID_ACTIVE : GRID} ${getRowBg(set)}`}>
+                  <div className={`grid gap-0.5 px-0.5 py-1 items-center rounded-lg transition-colors ${isActive ? GRID_ACTIVE : GRID} ${getRowBg(set)}`}>
                     {/* Set label — tappable in both modes */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -384,7 +384,7 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
                     </DropdownMenu>
 
                     {/* Previous */}
-                    <span className="text-xs text-muted-foreground truncate text-center tracking-wide">{prevLabel}</span>
+                    <span className="text-[11px] text-muted-foreground text-center tracking-wide whitespace-nowrap overflow-hidden">{prevLabel}</span>
 
                     {/* Weight */}
                     <TapCell
