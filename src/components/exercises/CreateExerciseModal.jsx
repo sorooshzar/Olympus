@@ -172,7 +172,11 @@ export default function CreateExerciseModal({ open, onClose, lockedMovementPatte
               </div>
               <InfoButton
                 title="Movement Type"
-                body="Compound = multi-joint. Isolation = single-joint. Used for rest timer defaults."
+                body={[
+                  "Compound exercises work multiple joints and muscle groups at once (e.g. Squat, Bench Press, Deadlift, Row). They're typically more fatiguing and build overall strength efficiently.",
+                  "Isolation exercises target a single joint and muscle group (e.g. Bicep Curl, Leg Extension, Lateral Raise). They're useful for targeting specific muscles with less overall fatigue.",
+                  "This setting is used to set smarter default rest timer durations — compound lifts default to longer rest periods, isolation lifts to shorter ones.",
+                ]}
               />
             </div>
           </div>
