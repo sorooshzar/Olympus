@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import { userStorage } from "@/components/utils/userStorage";
+import { haptic } from "@/components/utils/haptics";
 
 const RestTimerContext = createContext(null);
 
@@ -34,6 +35,8 @@ export function RestTimerProvider({ children }) {
         _clearInterval();
         setRunning(false);
         setCompleted(true);
+        // Light haptic on completion (fails silently on unsupported devices)
+        haptic.light();
         // Sound
         if (userStorage.getItem("gym-timer-sound") !== "false") {
           try {

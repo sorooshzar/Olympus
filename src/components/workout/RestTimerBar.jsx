@@ -9,6 +9,30 @@ function fmt(secs) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function CountdownRing({ progress, completed }) {
+  const size = 40;
+  const stroke = 3;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - (completed ? 0 : progress));
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" style={{ willChange: "transform" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--secondary))" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke="hsl(var(--primary))" strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.25s linear", willChange: "stroke-dashoffset" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Timer className={`w-4 h-4 ${completed ? "text-primary" : "text-muted-foreground"}`} />
+      </div>
+    </div>
+  );
+}
+
 export default function RestTimerBar() {
   const { seconds, total, running, visible, completed, pause, resume, adjust, skip } = useRestTimer();
 
@@ -36,8 +60,8 @@ export default function RestTimerBar() {
 
             <div className="px-4 py-3 flex items-center gap-3">
               {/* Label + icon */}
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <Timer className="w-4 h-4 text-primary shrink-0" />
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <CountdownRing progress={progress} completed={completed} />
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider leading-none">
                     {completed ? "Rest Complete!" : "Rest Timer"}

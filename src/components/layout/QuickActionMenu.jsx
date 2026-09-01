@@ -8,15 +8,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
+import { useActiveWorkout } from "@/components/workout/ActiveWorkoutContext";
 
 function WorkoutPicker({ onClose }) {
   const navigate = useNavigate();
+  const { startWorkout } = useActiveWorkout();
   const [openFolders, setOpenFolders] = useState({});
   const { data: folders = [] } = useQuery({ queryKey: ["folders"], queryFn: () => base44.entities.WorkoutFolder.list("order", 100) });
   const { data: templates = [] } = useQuery({ queryKey: ["templates"], queryFn: () => base44.entities.WorkoutTemplate.list("order", 100) });
 
-  const start = (t) => { onClose(); navigate(createPageUrl(`ActiveWorkout?templateId=${t.id}`)); };
-  const quickStart = () => { onClose(); navigate(createPageUrl("ActiveWorkout")); };
+  const start = (t) => { onClose(); startWorkout(t); navigate(createPageUrl("ActiveWorkout")); };
+  const quickStart = () => { onClose(); startWorkout(null); navigate(createPageUrl("ActiveWorkout")); };
 
   const toggle = (id) => setOpenFolders(p => ({ ...p, [id]: !p[id] }));
 

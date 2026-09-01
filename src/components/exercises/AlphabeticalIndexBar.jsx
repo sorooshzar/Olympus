@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useLayoutEffect } from "react";
+import { haptic } from "@/components/utils/haptics";
 
 const LETTERS = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
 // Touch zone hugs the list's right edge inside the row gutter. It must NOT
@@ -64,9 +65,10 @@ export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
   const scrub = useCallback((clientY) => {
     const l = letterFromY(clientY);
     if (!l) return;
+    if (l !== active) haptic.light();
     setActive(l);
     scrollToLetter(l);
-  }, [letterFromY, scrollToLetter]);
+  }, [letterFromY, scrollToLetter, active]);
 
   const onTouchStart = (e) => { scrub(e.touches[0].clientY); };
   const onTouchMove = (e) => { scrub(e.touches[0].clientY); };

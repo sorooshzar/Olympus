@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MUSCLE_HIERARCHY } from "@/components/utils/muscleHierarchy";
+import { haptic } from "@/components/utils/haptics";
 
 const EQUIPMENT = ["Barbell", "Dumbbell", "Machine", "Smith Machine", "Bodyweight", "Cable", "Band", "Other"];
 const SORT_OPTIONS = [
@@ -16,20 +17,21 @@ const SORT_OPTIONS = [
 ];
 
 export default function ExerciseFilters({ filters, onFiltersChange }) {
+  const change = (next) => { haptic.light(); onFiltersChange(next); };
   const toggleMuscleGroup = (muscleGroup) => {
     const current = filters.muscleGroups || [];
     const next = current.includes(muscleGroup) ? current.filter((x) => x !== muscleGroup) : [...current, muscleGroup];
-    onFiltersChange({ ...filters, muscleGroups: next });
+    change({ ...filters, muscleGroups: next });
   };
 
   const toggleEquipment = (eq) => {
     const key = eq.toLowerCase().replace(" ", "_");
     const current = filters.equipment || [];
     const next = current.includes(key) ? current.filter((x) => x !== key) : [...current, key];
-    onFiltersChange({ ...filters, equipment: next });
+    change({ ...filters, equipment: next });
   };
 
-  const setSort = (id) => onFiltersChange({ ...filters, sort: id });
+  const setSort = (id) => change({ ...filters, sort: id });
 
   const muscleCount = (filters.muscleGroups || []).length;
   const eqCount = (filters.equipment || []).length;
@@ -41,7 +43,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
     <div className="flex gap-2 items-center">
       {/* Ranked toggle — crown only */}
       <button
-        onClick={() => onFiltersChange({ ...filters, ranked: !rankedActive })}
+        onClick={() => change({ ...filters, ranked: !rankedActive })}
         className={`flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
           rankedActive ? "border-amber-400/50 bg-amber-400/15 text-amber-400" : "border-border bg-secondary text-muted-foreground"
         }`}
@@ -81,7 +83,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
             <>
               <div className="my-1 h-px bg-border" />
               <DropdownMenuItem
-                onClick={() => onFiltersChange({ ...filters, muscleGroups: [] })}
+                onClick={() => change({ ...filters, muscleGroups: [] })}
                 className="text-xs text-destructive"
               >
                 Clear Filter
@@ -124,7 +126,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
             <>
               <div className="my-1 h-px bg-border" />
               <DropdownMenuItem
-                onClick={() => onFiltersChange({ ...filters, equipment: [] })}
+                onClick={() => change({ ...filters, equipment: [] })}
                 className="text-xs text-destructive"
               >
                 Clear Filter
@@ -156,7 +158,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
 
       {/* Favourites toggle — star only */}
       <button
-        onClick={() => onFiltersChange({ ...filters, favouritesOnly: !favActive })}
+        onClick={() => change({ ...filters, favouritesOnly: !favActive })}
         className={`flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
           favActive ? "border-amber-400/50 bg-amber-400/15 text-amber-400" : "border-border bg-secondary text-muted-foreground"
         }`}
@@ -166,7 +168,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
 
       {/* Archived toggle */}
       <button
-        onClick={() => onFiltersChange({ ...filters, archived: !archivedActive })}
+        onClick={() => change({ ...filters, archived: !archivedActive })}
         className={`flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
           archivedActive ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
         }`}

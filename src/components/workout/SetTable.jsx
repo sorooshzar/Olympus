@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import NumericKeyboard from "./NumericKeyboard";
 import IosWheelPicker from "./IosWheelPicker";
 import { getRestDurationForSet } from "./ActiveWorkoutContext";
+import { haptic } from "@/components/utils/haptics";
 
 /* ── helpers ───────────────────────────────────────────── */
 function getSetLabel(set, workingIndex) {
@@ -237,8 +238,9 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
   const toggleComplete = (index) => {
     const newCompleted = !sets[index].completed;
     updateSet(index, "completed", newCompleted);
-    if (newCompleted && onSetCompleted) {
-      onSetCompleted(sets[index]);
+    if (newCompleted) {
+      haptic.light();
+      if (onSetCompleted) onSetCompleted(sets[index]);
     }
   };
 

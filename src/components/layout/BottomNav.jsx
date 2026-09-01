@@ -4,6 +4,7 @@ import { createPageUrl } from "@/utils";
 import { User, Dumbbell, Plus, X, Activity, Apple } from "lucide-react";
 import { motion } from "framer-motion";
 import QuickActionMenu from "./QuickActionMenu";
+import { haptic } from "@/components/utils/haptics";
 
 
 export default function BottomNav() {
@@ -36,7 +37,7 @@ export default function BottomNav() {
             if (tab.name === "plus") {
               return (
                 <div key="plus" className="flex-1 flex items-center justify-center">
-                  <button onClick={() => setMenuOpen(!menuOpen)} className="relative -mt-5">
+                  <button onClick={() => { haptic.light(); setMenuOpen(!menuOpen); }} className="relative -mt-5">
                     <motion.div
                       animate={{ rotate: menuOpen ? 45 : 0, scale: menuOpen ? 1.05 : 1 }}
                       transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -57,7 +58,7 @@ export default function BottomNav() {
             const active = isActive(tab.page);
 
             return (
-              <Link key={tab.name} to={createPageUrl(tab.page)}
+              <Link key={tab.name} to={createPageUrl(tab.page)} onClick={() => haptic.light()}
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 relative">
                 <Icon className={`w-[22px] h-[22px] transition-all duration-200 ${active ? "text-primary" : "text-muted-foreground/70"}`} strokeWidth={active ? 2.2 : 1.8} />
                 <span className={`text-[9.5px] font-medium tracking-tight transition-colors duration-200 ${active ? "text-primary font-semibold" : "text-muted-foreground/70"}`}>

@@ -161,7 +161,12 @@ export default function Friends() {
    const friendsWithXp = friends.map(friend => {
      const cachedData = queryClient.getQueryData(['friendData', friend.email]);
      const xp = cachedData?.xp || getLevelData(0);
-     return { friend, xp };
+     const volume = cachedData?.totalVolume || 0;
+     return { friend, xp, volume };
+   }).sort((a, b) => {
+     // Sort by level descending, then by total training volume as tiebreaker
+     if (b.xp.level !== a.xp.level) return b.xp.level - a.xp.level;
+     return b.volume - a.volume;
    });
 
    const pendingCount = pendingRes?.requests?.length ?? 0;

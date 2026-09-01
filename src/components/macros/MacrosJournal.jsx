@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Utensils } from "lucide-react";
 import WaterTracker from "./WaterTracker";
 import { getFoodIcon } from "./foodIcons";
 
@@ -123,6 +123,13 @@ export default function MacrosJournal({ date, entries, macroGoals, onAddToMeal, 
       <div className="bg-card rounded-xl border border-border px-3 py-1">
         <WaterTracker date={date} />
       </div>
+
+      {entries.length === 0 && (
+        <div className="text-center py-10">
+          <Utensils className="w-10 h-10 text-muted-foreground/25 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No meals logged today</p>
+        </div>
+      )}
 
       {/* Meal sections */}
       {MEAL_TYPES.map(meal => (

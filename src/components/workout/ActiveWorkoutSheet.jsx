@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { EXERCISE_SELECTOR_KEY } from "@/pages/ExerciseSelector";
 import confetti from "canvas-confetti";
+import { haptic } from "@/components/utils/haptics";
 
 function ConfirmDialog({ open, title, description, confirmLabel, cancelLabel, onConfirm, onCancel, confirmDestructive }) {
   if (!open) return null;
@@ -196,6 +197,7 @@ export default function ActiveWorkoutSheet() {
     // Wait for React to flush the completedLog state before navigating
     await new Promise(r => setTimeout(r, 100));
 
+    haptic.medium();
     confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 }, ticks: 120 });
     navigate("/WorkoutSummary");
   };

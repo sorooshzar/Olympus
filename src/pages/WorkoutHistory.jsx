@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 import { RANKS } from "@/components/utils/rankEngine";
 import { useToast } from "@/components/ui/use-toast";
+import { haptic } from "@/components/utils/haptics";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 function formatDuration(mins) {
   if (!mins) return "--";
@@ -265,6 +267,7 @@ export default function WorkoutHistory() {
   };
 
   const handleDelete = (id) => {
+    haptic.strong();
     // Optimistic delete: remove from the visible list instantly, then fire the
     // API call in the background. Roll back + toast on failure.
     const previousLogs = queryClient.getQueryData(["workoutLogs"]) || [];
@@ -328,7 +331,12 @@ export default function WorkoutHistory() {
     setSelectedLog(prev => prev ? { ...prev, exercises: updatedExercises, total_volume, total_sets: totalSets } : prev);
   };
 
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["workoutLogs"] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="max-w-lg mx-auto px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-6 space-y-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate(-1)}>
@@ -359,7 +367,7 @@ export default function WorkoutHistory() {
       {logs.length === 0 ? (
         <div className="text-center py-16">
           <Dumbbell className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No workouts logged yet</p>
+          <p className="text-sm text-muted-foreground">No workouts yet — tap + to start your first session</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -423,5 +431,6 @@ export default function WorkoutHistory() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
