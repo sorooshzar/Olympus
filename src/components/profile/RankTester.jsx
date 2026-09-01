@@ -22,12 +22,12 @@ export default function RankTester({ onClose, bodyWeightKg, gender = "male" }) {
 
   const { data: exercises = [] } = useQuery({
     queryKey: ["exercises"],
-    queryFn: () => base44.entities.Exercise.list(),
+    queryFn: () => base44.entities.Exercise.list(null, 500),
   });
 
   const { data: standards = [] } = useQuery({
     queryKey: ["strengthStandards"],
-    queryFn: () => base44.entities.StrengthStandard.list(),
+    queryFn: () => base44.entities.StrengthStandard.list(null, 500),
   });
 
   const standardsMap = useMemo(() => indexStandards(standards), [standards]);
@@ -39,10 +39,9 @@ export default function RankTester({ onClose, bodyWeightKg, gender = "male" }) {
   );
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return rankableExercises.slice(0, 20);
+    if (!search.trim()) return rankableExercises;
     return rankableExercises
-      .filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()))
-      .slice(0, 20);
+      .filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()));
   }, [rankableExercises, search]);
 
   const rank = useMemo(() => {
