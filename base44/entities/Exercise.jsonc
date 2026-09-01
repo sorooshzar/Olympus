@@ -90,9 +90,13 @@
     "primary_muscle"
   ],
   "rls": {
-    "create": true,
-    "read": true,
-    "update": true,
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": null,
+    "update": {
+      "created_by": "{{user.email}}"
+    },
     "delete": {
       "created_by": "{{user.email}}"
     }

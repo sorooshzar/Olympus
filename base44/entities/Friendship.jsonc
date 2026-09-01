@@ -34,7 +34,16 @@
     "status"
   ],
   "rls": {
-    "create": true,
+    "create": {
+      "$or": [
+        {
+          "data.requester_email": "{{user.email}}"
+        },
+        {
+          "data.recipient_email": "{{user.email}}"
+        }
+      ]
+    },
     "read": {
       "$or": [
         {
