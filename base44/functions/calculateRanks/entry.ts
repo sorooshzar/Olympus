@@ -242,19 +242,41 @@ Deno.serve(async (req) => {
         new Date(b.finished_at || b.started_at || b.created_date).getTime()
       );
       const byMuscle = {};
+      // Also patch WorkoutLogs whose rankable exercises have completed working
+      // sets but null rank (created during the buggy window before the dedup
+      // fix). Each such log gets its exercises array re-stamped with the
+      // freshly computed rank + impressiveness_score + best_e1rm.
+      const logUpdates = [];
       sortedLogs.forEach(log => {
         const logDate = log.finished_at || log.started_at || log.created_date;
         if (!logDate) return;
-        (log.exercises || []).forEach((ex, exIdx) => {
+        let logNeedsUpdate = false;
+        const patchedExercises = (log.exercises || []).map((ex, exIdx) => {
           const meta = resolveMeta(ex);
-          if (!meta) return;
+          if (!meta) return ex;
           const standard = standardMap[meta.rankable_standard_name];
           const events = buildEventsForExercise(ex, meta, standard, gender, bodyweightKg, weightUnit, logDate, log.id, exIdx);
           events.forEach(e => {
             if (!byMuscle[e.muscle]) byMuscle[e.muscle] = [];
             byMuscle[e.muscle].push(e);
           });
+          // Patch the WorkoutLog exercise entry if it's rankable, has completed
+          // working sets, but is missing a rank (the buggy-window symptom).
+          if (meta.is_rankable && standard) {
+            const hasCompletedSets = (ex.sets || []).some(s => s.completed && s.type !== "warmup");
+            if (!ex.rank && hasCompletedSets) {
+              const result = calculateExerciseRank(meta, ex.sets, standard, gender, bodyweightKg, weightUnit);
+              if (result.rank) {
+                logNeedsUpdate = true;
+                return { ...ex, rank: result.rank, impressiveness_score: result.impressiveness_score, best_e1rm: result.best_metric };
+              }
+            }
+          }
+          return ex;
         });
+        if (logNeedsUpdate) {
+          logUpdates.push({ id: log.id, exercises: patchedExercises });
+        }
       });
 
       // Dedup any pre-existing duplicate UserMuscleRank records for the same
@@ -299,6 +321,11 @@ Deno.serve(async (req) => {
         ...duplicateDeletes.map(id => base44.entities.UserMuscleRank.delete(id)),
       ]);
 
+      // Apply WorkoutLog patches (re-stamp rank/score on exercises that had null rank).
+      const logUpdateResults = await Promise.all(
+        logUpdates.map(u => base44.entities.WorkoutLog.update(u.id, { exercises: u.exercises }))
+      );
+
       let totalEvents = 0;
       Object.values(byMuscle).forEach(ev => { totalEvents += ev.length; });
       return Response.json({
@@ -307,6 +334,7 @@ Deno.serve(async (req) => {
         eventsTotal: totalEvents,
         staleDeleted: existingRanks.filter(r => !musclesWithEvents.includes(r.muscle)).length,
         duplicatesDeleted: duplicateDeletes.length,
+        workoutLogsPatched: logUpdateResults.length,
       });
     }
 
