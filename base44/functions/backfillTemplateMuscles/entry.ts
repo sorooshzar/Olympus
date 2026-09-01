@@ -15,7 +15,14 @@ export default async function(req) {
       base44.asServiceRole.entities.Exercise.list(null, 500),
     ]);
     const exerciseMap = {};
-    exercises.forEach(e => { exerciseMap[e.id] = e; });
+    const exerciseByName = {};
+    exercises.forEach(e => {
+      exerciseMap[e.id] = e;
+      if (e.name) exerciseByName[e.name] = e;
+    });
+    // Resolve by ID first, falling back to exact name match — older templates
+    // reference exercise IDs that were recreated, so ID lookup alone misses them.
+    const resolveMeta = (ex) => exerciseMap[ex.exercise_id] || exerciseByName[ex.exercise_name];
 
     let templatesPatched = 0;
     let entriesPatched = 0;
@@ -26,7 +33,7 @@ export default async function(req) {
       const patchedExercises = (t.exercises || []).map(ex => {
         if (ex.type === "variation") return ex;
         if (!ex.exercise_id) return ex;
-        const meta = exerciseMap[ex.exercise_id];
+        const meta = resolveMeta(ex);
         if (!meta || !meta.primary_muscle) return ex;
         const needsPatch = !ex.primary_muscle || !ex.muscle_group;
         if (!needsPatch) return ex;
