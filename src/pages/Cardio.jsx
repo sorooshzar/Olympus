@@ -29,6 +29,20 @@ const MOBILE_ACTIVITIES = ["Running", "Walking", "Cycling", "Hiking", "Other"];
 // MET values for calorie estimation
 const MET = { Running: 9.8, Walking: 3.5, Cycling: 6.8, Hiking: 5.3, Other: 5.0 };
 
+// ─── TEMPORARY: Cardio under construction — render a placeholder instead ──────
+// To restore the original Cardio page, delete the CardioPlaceholder block + the
+// `export default CardioPlaceholder;` line below, and re-add
+// `export default function Cardio()` at the original declaration further down.
+function CardioPlaceholder() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <Activity className="w-10 h-10 text-muted-foreground mb-4" />
+      <h1 className="text-xl font-bold mb-1">Cardio Page Coming Soon</h1>
+      <p className="text-sm text-muted-foreground">We're still building this. Check back later.</p>
+    </div>
+  );
+}
+export default CardioPlaceholder;
 // ─── Confetti helper ─────────────────────────────────────────────────────────
 function fireConfetti() {
   confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#3b82f6", "#22c55e", "#f59e0b", "#ec4899"] });
@@ -319,7 +333,7 @@ function CardioHistoryItem({ log }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function Cardio() {
+function Cardio() {
   const [screen, setScreen] = useState("home"); // home | pick_type | pick_machine | pick_activity | session
   const [sessionType, setSessionType] = useState(null);
   const [machine, setMachine] = useState(null);
