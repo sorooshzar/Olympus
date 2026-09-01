@@ -5,7 +5,7 @@ import ActiveWorkoutSheet from "./components/workout/ActiveWorkoutSheet";
 import { RestTimerProvider } from "./components/workout/RestTimerContext";
 import RestTimerBar from "./components/workout/RestTimerBar";
 
-const HIDDEN_NAV_PAGES = ["ActiveWorkout", "EditWorkout", "WorkoutHistory", "Measurements", "Settings", "ExerciseSelector", "SettingsAppearance", "SettingsUnits", "SettingsTimers", "SettingsNutrition", "SettingsPreferences", "SettingsAdvanced", "SettingsAccount"];
+const HIDDEN_NAV_PAGES = ["ActiveWorkout", "EditWorkout", "WorkoutHistory", "Measurements", "Settings", "ExerciseSelector", "SettingsAppearance", "SettingsUnits", "SettingsTimers", "SettingsNutrition", "SettingsPreferences", "SettingsAdvanced", "SettingsAccount", "SettingsFeedback"];
 
 export default function Layout({ children, currentPageName }) {
   const [darkMode, setDarkMode] = useState(true);

@@ -1,0 +1,66 @@
+{
+  "name": "Feedback",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "Bug Report",
+        "Feature Request",
+        "Improvement Idea",
+        "Other"
+      ],
+      "description": "Type of feedback"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Brief summary of the feedback"
+    },
+    "message": {
+      "type": "string",
+      "description": "Detailed description of the bug, idea, or suggestion"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Reviewed",
+        "In Progress",
+        "Resolved"
+      ],
+      "default": "New",
+      "description": "Internal review status"
+    },
+    "app_version": {
+      "type": "string",
+      "description": "App version at time of submission"
+    },
+    "device_info": {
+      "type": "string",
+      "description": "Browser/device user agent info"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the submitting user"
+    }
+  },
+  "required": [
+    "type",
+    "subject",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

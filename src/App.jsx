@@ -16,6 +16,7 @@ import SettingsNutrition from '@/pages/settings/SettingsNutrition';
 import SettingsPreferences from '@/pages/settings/SettingsPreferences';
 import SettingsAdvanced from '@/pages/settings/SettingsAdvanced';
 import SettingsAccount from '@/pages/settings/SettingsAccount';
+import SettingsFeedback from '@/pages/settings/SettingsFeedback';
 import { TabStateProvider } from '@/components/mobile/TabStateManager';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -120,6 +121,13 @@ const AuthenticatedApp = () => {
             <RouteContent pageKey="/SettingsAccount">
               <LayoutWrapper currentPageName="SettingsAccount">
                 <SettingsAccount />
+              </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/SettingsFeedback" element={
+            <RouteContent pageKey="/SettingsFeedback">
+              <LayoutWrapper currentPageName="SettingsFeedback">
+                <SettingsFeedback />
               </LayoutWrapper>
             </RouteContent>
           } />
