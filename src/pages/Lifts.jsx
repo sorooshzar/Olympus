@@ -525,21 +525,21 @@ function ExercisesTab() {
                 const primaryMuscle = ex.primary_muscle?.replace(/_/g, " ") || "Unknown";
                 const equipmentAbbr = EQUIPMENT_ABBREVIATIONS[ex.category?.toLowerCase()] || "--";
                 return (
-                  <button key={ex.id} onClick={() => setSelectedExercise(ex)} className={`w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors text-left ${archivedView ? "opacity-50" : ""}`}>
-                    <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                      <MuscleGroupIcon muscle={ex.primary_muscle} size={26} className="text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{ex.name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{primaryMuscle}{freqMap[ex.id] ? ` · ${freqMap[ex.id]}×` : ""}</p>
-                    </div>
-                    <div className="flex items-center gap-2 ml-auto">
-                      {ex.is_rankable && (<Crown className="w-4 h-4 text-amber-400 flex-shrink-0" fill="#FFD700" strokeWidth={1.5} />)}
-                      <span className="bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded-md">{equipmentAbbr}</span>
-                      {archivedView ? (
-                        <button onClick={(e) => { e.stopPropagation(); handleUnarchiveExercise(ex); }} className="text-xs font-semibold text-primary px-2 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0">
-                          Unarchive
-                        </button>
+                  <button key={ex.id} onClick={() => setSelectedExercise(ex)} className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-secondary/50 transition-colors text-left">
+                     <div className={`w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 ${archivedView ? "opacity-50" : ""}`}>
+                       <MuscleGroupIcon muscle={ex.primary_muscle} size={26} className="text-muted-foreground" />
+                     </div>
+                     <div className={`flex-1 min-w-0 ${archivedView ? "opacity-50" : ""}`}>
+                       <p className="text-sm font-medium truncate">{ex.name}</p>
+                       <p className="text-xs text-muted-foreground capitalize">{primaryMuscle}{freqMap[ex.id] ? ` · ${freqMap[ex.id]}×` : ""}</p>
+                     </div>
+                     <div className="flex items-center gap-2 ml-auto">
+                       {ex.is_rankable && (<Crown className={`w-4 h-4 text-amber-400 flex-shrink-0 ${archivedView ? "opacity-50" : ""}`} fill="#FFD700" strokeWidth={1.5} />)}
+                       <span className={`bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded-md ${archivedView ? "opacity-50" : ""}`}>{equipmentAbbr}</span>
+                       {archivedView ? (
+                         <button onClick={(e) => { e.stopPropagation(); handleUnarchiveExercise(ex); }} className="text-xs font-semibold text-primary px-2 py-1 rounded-lg bg-primary/10 active:bg-primary/20 transition-colors flex-shrink-0">
+                           Unarchive
+                         </button>
                       ) : (
                         <button onClick={(e) => toggleFavourite(e, ex)} className="p-1 rounded-lg hover:bg-secondary transition-colors flex-shrink-0">
                           <Star className={`w-4 h-4 ${ex.is_favourite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`} />
