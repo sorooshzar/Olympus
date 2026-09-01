@@ -50,7 +50,7 @@ export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
         if (lo >= 0 && availableLetters.has(LETTERS[lo])) { target = document.querySelector(`[data-letter="${LETTERS[lo]}"]`); break; }
       }
     }
-    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (target) target.scrollIntoView({ behavior: "instant", block: "start" });
   }, [availableLetters]);
 
   const letterFromY = useCallback((clientY) => {
