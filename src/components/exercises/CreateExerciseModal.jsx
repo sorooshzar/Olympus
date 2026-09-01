@@ -7,6 +7,7 @@ import { X, ChevronDown } from "lucide-react";
 import { getAllSubSections } from "@/components/utils/muscleHierarchy";
 import { getPatternsForMuscle, getMuscleDisplayLabel } from "@/components/utils/movementPatterns";
 import MuscleMultiSelect from "./MuscleMultiSelect";
+import InfoButton from "@/components/info/InfoButton";
 
 const CATEGORIES = ["barbell", "dumbbell", "machine", "smith_machine", "cable", "bodyweight", "other"];
 
@@ -153,24 +154,27 @@ export default function CreateExerciseModal({ open, onClose, lockedMovementPatte
           {/* Movement Type (compound/isolation — rest timing) */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Movement Type</label>
-            <div className="flex gap-2">
-              {["compound", "isolation"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setMovementType((prev) => (prev === type ? "" : type))}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold capitalize transition-all ${
-                    movementType === type
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground hover:bg-secondary/70"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex flex-1 gap-2">
+                {["compound", "isolation"].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setMovementType((prev) => (prev === type ? "" : type))}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-semibold capitalize transition-all ${
+                      movementType === type
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <InfoButton
+                title="Movement Type"
+                body="Compound = multi-joint. Isolation = single-joint. Used for rest timer defaults."
+              />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Compound = multi-joint. Isolation = single-joint. Used for rest timer defaults.
-            </p>
           </div>
 
           {/* Secondary Muscles — dropdown multi-select */}
