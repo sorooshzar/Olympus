@@ -53,7 +53,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[92px] ${
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[80px] ${
               muscleCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
             }`}
           >
@@ -95,7 +95,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[108px] ${
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[96px] ${
               eqCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
             }`}
           >
