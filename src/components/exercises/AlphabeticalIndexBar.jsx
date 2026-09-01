@@ -1,9 +1,10 @@
 import React, { useRef, useState, useCallback, useLayoutEffect } from "react";
 
 const LETTERS = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
-// Visible letters are ~14px; the touch zone is wider so the user can grab
-// the scrubber from anywhere near the right edge (iOS Contacts style).
-const TOUCH_WIDTH = 34;
+// Touch zone hugs the list's right edge inside the row gutter. It must NOT
+// extend left over the favourite-star button (which sits ~16px inside the
+// list edge), so 14px leaves a small gap while staying grabbable.
+const TOUCH_WIDTH = 14;
 
 /**
  * iOS-style A-Z letter scrubber for the alphabetical exercises view.
@@ -13,8 +14,8 @@ const TOUCH_WIDTH = 34;
  * - TAP a letter → smooth-scrolls to the first exercise under that letter.
  * - SLIDE up/down anywhere in the touch zone → continuously scrubs the alphabet.
  * The active letter highlights in the accent color while touched; returns to
- * muted on release. Letters with no matching exercises are dimmed; tapping one
- * snaps to the nearest present letter.
+ * muted on release. All inactive letters share the same muted baseline style.
+ * Tapping a letter with no matching exercises snaps to the nearest present one.
  */
 export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
   const barRef = useRef(null);
@@ -94,12 +95,11 @@ export default function AlphabeticalIndexBar({ availableLetters = new Set() }) {
       style={{ width: `${TOUCH_WIDTH}px` }}
     >
       {LETTERS.map((l) => {
-        const present = availableLetters.has(l);
         const isActive = active === l;
         return (
           <span
             key={l}
-            className={`leading-[10px] text-[9px] font-medium transition-colors ${isActive ? "text-primary font-bold" : present ? "text-muted-foreground/60" : "text-muted-foreground/20"}`}
+            className={`leading-[10px] text-[9px] font-medium transition-colors ${isActive ? "text-primary font-bold" : "text-muted-foreground/50"}`}
           >
             {l}
           </span>
