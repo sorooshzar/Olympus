@@ -20,7 +20,7 @@ import {
  *  - prevSetsMap: { exercise_id -> sets[] }
  *  - droppableId: string
  */
-export default function ExerciseList({ exercises, onChange, isActive = false, prevSetsMap = {}, droppableId = "exercises", onSetCompleted }) {
+export default function ExerciseList({ exercises, onChange, isActive = false, prevSetsMap = {}, droppableId = "exercises", onSetCompleted, onReplaceExercise }) {
   const [supersetPickerFor, setSupersetPickerFor] = useState(null); // index of exercise opening the picker
 
   const labelMap = buildSupersetLabelMap(exercises);
@@ -101,6 +101,7 @@ export default function ExerciseList({ exercises, onChange, isActive = false, pr
                             index={index}
                             onChange={(updated) => handleExerciseChange(index, updated)}
                             onRemove={() => handleRemoveExercise(index)}
+                            onReplace={onReplaceExercise ? () => onReplaceExercise(index) : undefined}
                             isActive={isActive}
                             previousSets={prevSetsMap[exercise.exercise_id] || []}
                             dragHandleProps={dragProvided.dragHandleProps}
@@ -139,6 +140,7 @@ export default function ExerciseList({ exercises, onChange, isActive = false, pr
                          onDissolve={() => handleDissolve(supersetId)}
                          onExerciseChange={handleExerciseChange}
                          onExerciseRemove={handleRemoveExercise}
+                         onExerciseReplace={onReplaceExercise}
                          onLeaveSuperset={handleLeaveSuperset}
                          dragHandlePropsMap={{ [firstIndex]: dragProvided.dragHandleProps }}
                          onSetCompleted={onSetCompleted}

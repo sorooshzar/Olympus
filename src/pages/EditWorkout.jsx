@@ -9,6 +9,7 @@ import AddVariationSheet from "../components/workout/AddVariationSheet";
 import { EXERCISE_SELECTOR_KEY } from "./ExerciseSelector";
 import { createPageUrl } from "@/utils";
 import { createSuperset } from "../components/workout/supersetUtils";
+import ReplaceExerciseSheet, { buildReplacementExercise } from "../components/workout/ReplaceExerciseSheet";
 
 export default function EditWorkout() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -25,6 +26,7 @@ export default function EditWorkout() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState(new Set());
   const isDirty = useRef(false);
+  const [replaceIndex, setReplaceIndex] = useState(null);
   const draftKey = `edit-draft-${id}`;
 
   const { data: template } = useQuery({
@@ -131,6 +133,19 @@ export default function EditWorkout() {
   const handleExercisesChange = (newExercises) => {
     isDirty.current = true;
     setExercises(newExercises);
+  };
+
+  const handleReplaceExercise = (index) => setReplaceIndex(index);
+
+  const handleConfirmReplace = (newEx) => {
+    if (replaceIndex === null) return;
+    setExercises(prev => {
+      const next = [...prev];
+      next[replaceIndex] = buildReplacementExercise(next[replaceIndex], newEx);
+      return next;
+    });
+    isDirty.current = true;
+    setReplaceIndex(null);
   };
 
   const handleSave = async () => {
@@ -261,6 +276,7 @@ export default function EditWorkout() {
             onChange={handleExercisesChange}
             isActive={false}
             droppableId="edit-exercises"
+            onReplaceExercise={handleReplaceExercise}
           />
         )}
 
@@ -304,6 +320,13 @@ export default function EditWorkout() {
           isDirty.current = true;
           setShowAddVariation(false);
         }}
+      />
+
+      <ReplaceExerciseSheet
+        open={replaceIndex !== null}
+        onClose={() => setReplaceIndex(null)}
+        onReplace={handleConfirmReplace}
+        excludeExerciseId={replaceIndex !== null ? exercises[replaceIndex]?.exercise_id : undefined}
       />
 
       {showUnsavedConfirm && (

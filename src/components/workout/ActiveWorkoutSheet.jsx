@@ -11,6 +11,7 @@ import { createPageUrl } from "@/utils";
 import { EXERCISE_SELECTOR_KEY } from "@/pages/ExerciseSelector";
 import confetti from "canvas-confetti";
 import { haptic } from "@/components/utils/haptics";
+import ReplaceExerciseSheet, { buildReplacementExercise } from "./ReplaceExerciseSheet";
 
 function ConfirmDialog({ open, title, description, confirmLabel, cancelLabel, onConfirm, onCancel, confirmDestructive }) {
   if (!open) return null;
@@ -44,6 +45,7 @@ export default function ActiveWorkoutSheet() {
   const scrollContainerRef = useRef(null);
   const miniBarDragStart = useRef(null);
   const notesInitializedFor = useRef(null);
+  const [replaceIndex, setReplaceIndex] = useState(null);
 
   // Load recent workout logs for previous-set data
   const { data: workoutLogs = [] } = useQuery({
@@ -106,6 +108,20 @@ export default function ActiveWorkoutSheet() {
       ? (set.rest_duration || getRestDurationForSet(set.type, exercise?.movement_type))
       : getRestDurationForSet(set.type, exercise?.movement_type);
     startRestTimer(duration);
+  };
+
+  const handleReplaceExercise = useCallback((index) => {
+    setReplaceIndex(index);
+  }, []);
+
+  const handleConfirmReplace = (newEx) => {
+    if (replaceIndex === null) return;
+    updateWorkout(prev => {
+      const exercises = [...prev.exercises];
+      exercises[replaceIndex] = buildReplacementExercise(exercises[replaceIndex], newEx);
+      return { ...prev, exercises };
+    });
+    setReplaceIndex(null);
   };
 
   // Elapsed timer — always cleared on unmount or startTime change
@@ -345,6 +361,7 @@ export default function ActiveWorkoutSheet() {
               prevSetsMap={prevSetsMap}
               droppableId="active-exercises"
               onSetCompleted={handleSetCompleted}
+              onReplaceExercise={handleReplaceExercise}
             />
 
             <Button
@@ -360,6 +377,13 @@ export default function ActiveWorkoutSheet() {
 
 
       </div>
+
+      <ReplaceExerciseSheet
+        open={replaceIndex !== null}
+        onClose={() => setReplaceIndex(null)}
+        onReplace={handleConfirmReplace}
+        excludeExerciseId={replaceIndex !== null ? workout.exercises[replaceIndex]?.exercise_id : undefined}
+      />
 
       <ConfirmDialog
         open={showCancelConfirm}
