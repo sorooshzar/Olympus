@@ -81,6 +81,10 @@ function calculateExerciseRank(exerciseMeta, sets, standard, userGender, bodywei
   const thresholds = interpolateThresholds(standardsArray, bodyweightLb);
   if (!thresholds) return { rank: null, impressiveness_score: null, best_metric: null };
 
+  // Rank is computed fresh from this session's best set vs the strength
+  // standard — it is NEVER skipped because the exercise_id already appears in
+  // rank_history. Every finished workout produces its own independent event;
+  // dedup is by workout_log_id|exercise_instance_index only (see rankUtils).
   let rank = null;
   for (const tier of TIER_CHECK_ORDER) {
     if (metricStd >= thresholds[tier]) { rank = tier; break; }
