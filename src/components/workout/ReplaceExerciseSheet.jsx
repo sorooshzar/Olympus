@@ -23,6 +23,7 @@ export function buildReplacementExercise(oldExercise, newEx) {
     exercise_id: newEx.id,
     exercise_name: newEx.name,
     muscle_group: newEx.primary_muscle,
+    primary_muscle: newEx.primary_muscle,
     movement_type: newEx.movement_type || null,
     color: null,
     notes: null,

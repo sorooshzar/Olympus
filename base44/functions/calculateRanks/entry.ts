@@ -260,17 +260,24 @@ Deno.serve(async (req) => {
             if (!byMuscle[e.muscle]) byMuscle[e.muscle] = [];
             byMuscle[e.muscle].push(e);
           });
-          // Patch the WorkoutLog exercise entry if it's rankable, has completed
-          // working sets, but is missing a rank (the buggy-window symptom).
+          // Resilience: backfill muscle_group from the Exercise entity if missing.
+          const filledMuscleGroup = ex.muscle_group || meta.primary_muscle || null;
+          const needsMusclePatch = !ex.muscle_group && !!filledMuscleGroup;
+          // Patch the WorkoutLog exercise entry if muscle_group is missing, or if
+          // it's rankable with completed working sets but missing a rank.
           if (meta.is_rankable && standard) {
             const hasCompletedSets = (ex.sets || []).some(s => s.completed && s.type !== "warmup");
-            if (!ex.rank && hasCompletedSets) {
+            if ((!ex.rank || needsMusclePatch) && hasCompletedSets) {
               const result = calculateExerciseRank(meta, ex.sets, standard, gender, bodyweightKg, weightUnit);
-              if (result.rank) {
+              if (result.rank || needsMusclePatch) {
                 logNeedsUpdate = true;
-                return { ...ex, rank: result.rank, impressiveness_score: result.impressiveness_score, best_e1rm: result.best_metric };
+                return { ...ex, muscle_group: filledMuscleGroup, rank: result.rank, impressiveness_score: result.impressiveness_score, best_e1rm: result.best_metric };
               }
             }
+          }
+          if (needsMusclePatch) {
+            logNeedsUpdate = true;
+            return { ...ex, muscle_group: filledMuscleGroup };
           }
           return ex;
         });
@@ -437,13 +444,18 @@ Deno.serve(async (req) => {
     // Per-exercise rank (for WorkoutLog.exercises + medals)
     const updatedExercises = sourceExercises.map(ex => {
       const meta = resolveMeta(ex);
+      // Resilience: backfill muscle_group from the Exercise entity if the
+      // WorkoutLog entry is missing it (happens when a workout was started
+      // from a template whose exercise slot never had primary_muscle set).
+      const muscleGroup = ex.muscle_group || meta?.primary_muscle || null;
       if (!meta || !meta.is_rankable) {
-        return { ...ex, rank: null, impressiveness_score: null };
+        return { ...ex, muscle_group: muscleGroup, rank: null, impressiveness_score: null };
       }
       const standard = standardMap[meta.rankable_standard_name];
       const result = calculateExerciseRank(meta, ex.sets, standard, gender, bodyweightKg, weightUnit);
       return {
         ...ex,
+        muscle_group: muscleGroup,
         rank: result.rank,
         impressiveness_score: result.impressiveness_score,
         best_e1rm: result.best_metric,
