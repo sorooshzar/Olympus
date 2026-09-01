@@ -201,6 +201,16 @@ export default function Profile() {
     enabled: !!user,
   });
 
+  // Recovery-only query — fetches just 50 recent logs (sorted by -finished_at, so
+  // most-recent-first). The 7-day decay window means we never need more than a
+  // handful of recent sessions; keeping this separate from the 2000-log rank/stats
+  // query makes the Recovery view noticeably faster for users with long histories.
+  const { data: recoveryLogs = [] } = useQuery({
+    queryKey: ["workoutLogs", "recovery"],
+    queryFn: () => base44.entities.WorkoutLog.filter({ created_by: user.email }, "-finished_at", 50),
+    enabled: !!user && showRecovery,
+  });
+
   // Exercises — used to look up each exercise's secondary_muscles so recovery
   // fatigue is attributed to synergist muscles (e.g. bench → Triceps, Front Delt).
   const { data: allExercises = [] } = useQuery({
@@ -248,12 +258,13 @@ export default function Profile() {
     refetchTrackers();
   };
 
-  // Recomputes live whenever WorkoutLogs refetch OR the Recovery view is toggled,
-  // using the current time as the reference point so muscles visibly decay toward
-  // "Ready" as sessions age past the 5-day recovery window.
+  // Recomputes live whenever the Recovery view is toggled, using the current time
+  // as the reference point so muscles visibly decay toward "Ready" as sessions age
+  // past the 5-day recovery window. Uses a dedicated 50-log query (not the full
+  // 2000-log history) for fast recalculation.
   const recoveryData = React.useMemo(
-    () => computeRecovery(workoutLogs, exerciseSecondaryMap),
-    [workoutLogs, exerciseSecondaryMap, showRecovery]
+    () => computeRecovery(recoveryLogs, exerciseSecondaryMap),
+    [recoveryLogs, exerciseSecondaryMap, showRecovery]
   );
 
   // latestWeight stored in kg, display converts it

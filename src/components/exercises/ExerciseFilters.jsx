@@ -40,7 +40,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
   const archivedActive = !!filters.archived;
 
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-1.5 items-center">
       {/* Ranked toggle — crown only */}
       <button
         onClick={() => change({ ...filters, ranked: !rankedActive })}
@@ -55,11 +55,11 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[80px] ${
+            className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
               muscleCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
             }`}
           >
-            <span className="text-left truncate">
+            <span className="text-left whitespace-nowrap">
               {muscleCount > 0 ? `Muscle (${muscleCount})` : "Muscle"}
             </span>
             <ChevronDown className="w-3 h-3 flex-shrink-0" />
@@ -97,7 +97,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 w-[96px] ${
+            className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
               eqCount > 0 ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
             }`}
           >
@@ -139,7 +139,7 @@ export default function ExerciseFilters({ filters, onFiltersChange }) {
       {/* Sort Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
+          <button className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-medium border transition-all flex-shrink-0 ${
             filters.sort && filters.sort !== "name" ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-secondary text-muted-foreground"
           }`}>
             <ArrowUpDown className="w-3.5 h-3.5" />
