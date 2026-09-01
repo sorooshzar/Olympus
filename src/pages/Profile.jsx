@@ -220,7 +220,7 @@ export default function Profile() {
   });
   const exerciseSecondaryMap = React.useMemo(() => {
     const m = {};
-    allExercises.forEach(e => { m[e.id] = { secondary_muscles: e.secondary_muscles }; });
+    allExercises.forEach(e => { m[e.id] = { secondary_muscles: e.secondary_muscles, movement_pattern: e.movement_pattern }; });
     return m;
   }, [allExercises]);
 

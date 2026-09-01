@@ -25,14 +25,26 @@ function rirToMultiplier(rir) {
 
 // Fatigue thresholds — calibrated so a typical hard session (3–6 working sets
 // near failure) shows as Heavy/Sore, decaying to Ready over ~5 days.
+// Recalibrated for the relative-intensity stimulus scale. Old thresholds
+// (4/12/25/45) were tuned for raw tonnage magnitudes (hundreds/thousands);
+// the new formula produces values in the single-to-low-double digits per set,
+// so thresholds are proportionally lower.
 const THRESHOLDS = {
-  light:    4,
-  moderate: 12,
-  heavy:    25,
-  sore:     45,
+  light:    3,
+  moderate: 7,
+  heavy:    12,
+  sore:     25,
 };
 
 const SECONDARY_DISCOUNT = 0.5;
+const SECONDARY_DISCOUNT_GLUTES_HIP = 0.75;  // Glutes on hip-dominant compounds take near-primary stress
+
+const HIP_DOMINANT_PATTERNS = ["squat", "hip hinge", "lunge", "split", "deadlift", "rdl", "romanian", "good morning"];
+function isHipDominant(pattern) {
+  if (!pattern) return false;
+  const p = pattern.toLowerCase();
+  return HIP_DOMINANT_PATTERNS.some(h => p.includes(h));
+}
 
 export function computeRecovery(workoutLogs, exerciseMap = {}) {
   const now = Date.now();
@@ -116,12 +128,20 @@ export function computeRecovery(workoutLogs, exerciseMap = {}) {
       // Primary muscle — full stimulus.
       applyFatigue(ex.muscle_group, sessionStimulus, hoursAgo);
 
-      // Secondary muscles — reduced involvement (~0.5×), matching the rank
-      // system's secondary involvement_factor. Without this, bench press never
-      // fatigues Triceps / Front Delt even though they were worked hard.
+      // Secondary muscles — reduced involvement vs primary. The default 0.5×
+      // discount suits most synergists (e.g. triceps on bench), but Glutes on
+      // hip-dominant compounds (squat, hinge, lunge) take near-primary-level
+      // stress, so they get a boosted 0.75× factor. Erectors / Hamstrings /
+      // Adductors stay at the default — their involvement is genuinely secondary.
       const secondaries = exerciseMap?.[ex.exercise_id]?.secondary_muscles;
+      const hipDominant = isHipDominant(exerciseMap?.[ex.exercise_id]?.movement_pattern);
       if (Array.isArray(secondaries)) {
-        secondaries.forEach(sm => applyFatigue(sm, sessionStimulus * SECONDARY_DISCOUNT, hoursAgo));
+        secondaries.forEach(sm => {
+          const involvement = (hipDominant && sm.toLowerCase() === "glutes")
+            ? SECONDARY_DISCOUNT_GLUTES_HIP
+            : SECONDARY_DISCOUNT;
+          applyFatigue(sm, sessionStimulus * involvement, hoursAgo);
+        });
       }
     });
   });

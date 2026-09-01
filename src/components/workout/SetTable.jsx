@@ -213,6 +213,48 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
     setKbValue("");
   }, [activeKey, kbValue, sets, onChange, toKg]);
 
+  // Commit current field and jump to the next input in the same row
+  // (Weight → Reps → RIR, or Weight → Reps for warmups since RIR is blank).
+  const commitAndNext = useCallback(() => {
+    if (!activeKey) return;
+    const { setIndex, field } = activeKey;
+    const raw = parseFloat(kbValue);
+    const updated = [...sets];
+    const set = { ...updated[setIndex] };
+
+    if (field === "weight") {
+      set.weight = isNaN(raw) ? 0 : toKg(raw);
+    } else if (field === "rir") {
+      const rir = isNaN(raw) ? 0 : Math.round(raw);
+      set.rir = rir;
+      if (rir === 0) set.type = "failure";
+      else if (set.type === "failure") set.type = "working";
+    } else {
+      set[field] = isNaN(raw) ? 0 : Math.round(raw);
+    }
+
+    updated[setIndex] = set;
+    onChange(updated);
+
+    // Determine next field — warmups have no RIR input, so reps is the last.
+    const isWarmup = set.type === "warmup";
+    let nextField = null;
+    if (field === "weight") nextField = "reps";
+    else if (field === "reps" && !isWarmup) nextField = "rir";
+
+    if (nextField) {
+      const currentValue = updated[setIndex][nextField];
+      const display = nextField === "weight"
+        ? (currentValue ? String(toDisplay(currentValue)) : "")
+        : (currentValue != null && currentValue !== 0 ? String(currentValue) : "");
+      setKbValue(display);
+      setActiveKey({ setIndex, field: nextField });
+    } else {
+      setActiveKey(null);
+      setKbValue("");
+    }
+  }, [activeKey, kbValue, sets, onChange, toKg]);
+
   const updateSet = (index, field, value) => {
     const updated = [...sets];
     updated[index] = { ...updated[index], [field]: value };
@@ -257,6 +299,13 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
     : activeKey?.field === "rir"  ? "RIR"
     : "";
   const showQuickAdds = activeKey?.field === "weight";
+  // Whether the active field is the last input in its row — when true, the
+  // keyboard shows one tall Done button; when false, a small → button sits
+  // above a shorter Done to jump to the next field.
+  const isLastField = activeKey
+    ? (activeKey.field === "rir" ||
+       (activeKey.field === "reps" && sets[activeKey.setIndex]?.type === "warmup"))
+    : false;
 
   return (
     <>
@@ -353,13 +402,17 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
                       className={isActiveField("reps") ? "ring-1 ring-primary" : ""}
                     />
 
-                    {/* RIR */}
-                    <TapCell
-                      value={displayRir}
-                      onTap={(e) => openKb(index, "rir", set.rir, e)}
-                      placeholder="2"
-                      className={isActiveField("rir") ? "ring-1 ring-primary" : ""}
-                    />
+                    {/* RIR — blank for warmup sets (warmups don't track intensity) */}
+                    {set.type === "warmup" ? (
+                      <div />
+                    ) : (
+                      <TapCell
+                        value={displayRir}
+                        onTap={(e) => openKb(index, "rir", set.rir, e)}
+                        placeholder="2"
+                        className={isActiveField("rir") ? "ring-1 ring-primary" : ""}
+                      />
+                    )}
 
                     {/* 1RM% */}
                     <span className={`text-[10px] font-semibold text-center ${pctColor}`}>{pctLabel}</span>
@@ -440,6 +493,8 @@ export default function SetTable({ sets = [], onChange, isActive = false, previo
         value={kbValue}
         onValue={setKbValue}
         onDone={commitKb}
+        onNext={commitAndNext}
+        isLastField={isLastField}
         label={kbLabel}
         quickAdds={showQuickAdds ? [2.5, 5, 10] : null}
       />

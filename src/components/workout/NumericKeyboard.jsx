@@ -1,8 +1,8 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Delete } from "lucide-react";
+import { Delete, ArrowRight } from "lucide-react";
 
-export default function NumericKeyboard({ visible, value, onValue, onDone, label, quickAdds }) {
+export default function NumericKeyboard({ visible, value, onValue, onDone, onNext, isLastField, label, quickAdds }) {
   const handleKey = (key) => {
     if (key === "back") {
       const s = String(value ?? "");
@@ -79,13 +79,30 @@ export default function NumericKeyboard({ visible, value, onValue, onDone, label
                 ))
               )}
             </div>
-            {/* Right: Done */}
-            <button
-              onPointerDown={onDone}
-              className="w-20 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:opacity-80 active:scale-95 transition-all select-none font-bold text-base"
-            >
-              Done
-            </button>
+            {/* Right: Done (+ optional Next-field jump) */}
+            {isLastField ? (
+              <button
+                onPointerDown={onDone}
+                className="w-20 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:opacity-80 active:scale-95 transition-all select-none font-bold text-base"
+              >
+                Done
+              </button>
+            ) : (
+              <div className="w-20 flex flex-col gap-2">
+                <button
+                  onPointerDown={onNext}
+                  className="h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center active:opacity-80 active:scale-95 transition-all select-none"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <button
+                  onPointerDown={onDone}
+                  className="flex-1 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:opacity-80 active:scale-95 transition-all select-none font-bold text-base"
+                >
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
