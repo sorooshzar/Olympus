@@ -77,9 +77,6 @@ function RecipeLogSheet({ recipe, onLog, onClose }) {
           <span className="text-xs font-bold" style={{ color: CARBS_COLOR }}>C:{carbs}g</span>
           <span className="text-xs font-bold" style={{ color: FAT_COLOR }}>F:{fat}g</span>
         </div>
-        <p className="text-[11px] text-muted-foreground text-center -mt-2">
-          {count} serving{count !== 1 ? "s" : ""} = {cal} cal · P: {protein}g · C: {carbs}g · F: {fat}g
-        </p>
 
         <div>
           <p className="text-xs text-muted-foreground mb-2">Log to which meal?</p>
