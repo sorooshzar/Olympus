@@ -60,12 +60,28 @@ function getMuscleCategory(muscleGroup) {
   return null;
 }
 
-export function computeRecovery(workoutLogs) {
+export function computeRecovery(workoutLogs, exerciseMap = {}) {
   const now = Date.now();
   const cutoff = now - 7 * 24 * 60 * 60 * 1000; // only look at last 7 days
 
-  // Accumulated decayed fatigue per muscle group (keyed by lowercase group name)
+  // Accumulated decayed fatigue per muscle, keyed by the LOWERCASE muscle name
+  // (e.g. "mid/low chest", "front delt", "triceps") — this is the exact key the
+  // MuscleModel SVG reads via GROUP_TO_MUSCLE[name].toLowerCase(). Keying by the
+  // broad category ("chest", "shoulders") broke every lookup and made the whole
+  // map default to "fresh".
   const fatigue = {};
+
+  // Apply a decayed fatigue load to a muscle, keyed by its lowercased name.
+  // Half-life comes from the muscle's broad category (chest/triceps/shoulders…).
+  const applyFatigue = (muscleName, load, hoursAgo) => {
+    if (!muscleName || !load) return;
+    const key = muscleName.toLowerCase();
+    const category = getMuscleCategory(muscleName);
+    const halfLife = HALF_LIVES[category] || 48;
+    // Exponential decay: remaining = initial × e^(-ln2 × t / halfLife)
+    const decayFactor = Math.exp((-0.693 * hoursAgo) / halfLife);
+    fatigue[key] = (fatigue[key] || 0) + load * decayFactor;
+  };
 
   workoutLogs.forEach(log => {
     const logTime = new Date(log.finished_at || log.started_at || log.created_date).getTime();
@@ -74,34 +90,39 @@ export function computeRecovery(workoutLogs) {
     const hoursAgo = (now - logTime) / (1000 * 60 * 60);
 
     log.exercises?.forEach(ex => {
-      const muscle = getMuscleCategory(ex.muscle_group);
-      if (!muscle) return;
-
-      const halfLife = HALF_LIVES[muscle] || 48;
-      // Exponential decay: remaining = initial × e^(-ln2 × t / halfLife)
-      const decayFactor = Math.exp((-0.693 * hoursAgo) / halfLife);
-
+      // Session fatigue = Σ(reps × intensity) over completed working sets.
+      // Warmup sets are excluded — they don't contribute meaningful fatigue.
       let sessionFatigue = 0;
       ex.sets?.forEach(s => {
-        if (!s.completed) return;
+        if (!s.completed || s.type === "warmup") return;
         const reps = s.reps || 0;
-        const intensity = rirToIntensity(s.rir != null ? s.rir : null);
+        const intensity = rirToIntensity(s.rir);
         sessionFatigue += reps * intensity;
       });
+      if (!sessionFatigue) return;
 
-      fatigue[muscle] = (fatigue[muscle] || 0) + sessionFatigue * decayFactor;
+      // Primary muscle — full load.
+      applyFatigue(ex.muscle_group, sessionFatigue, hoursAgo);
+
+      // Secondary muscles — reduced involvement (~0.5×), matching the rank
+      // system's secondary involvement_factor. Without this, bench press never
+      // fatigued Triceps / Front Delt even though they were worked hard.
+      const secondaries = exerciseMap?.[ex.exercise_id]?.secondary_muscles;
+      if (Array.isArray(secondaries)) {
+        secondaries.forEach(sm => applyFatigue(sm, sessionFatigue * 0.5, hoursAgo));
+      }
     });
   });
 
   // Map fatigue score → recovery state
   const recovery = {};
   Object.entries(fatigue).forEach(([muscle, score]) => {
-    if (score >= THRESHOLDS.sore)     recovery[muscle] = "sore";
+    if (score >= THRESHOLDS.sore)          recovery[muscle] = "sore";
     else if (score >= THRESHOLDS.heavy)    recovery[muscle] = "heavy";
     else if (score >= THRESHOLDS.moderate) recovery[muscle] = "moderate";
     else if (score >= THRESHOLDS.light)    recovery[muscle] = "light";
     else                                   recovery[muscle] = "fresh";
   });
 
-  return recovery; // e.g. { chest: "moderate", shoulders: "fresh", quads: "heavy" }
+  return recovery; // e.g. { "mid/low chest": "sore", "triceps": "heavy", "front delt": "heavy" }
 }

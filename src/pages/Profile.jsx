@@ -201,6 +201,19 @@ export default function Profile() {
     enabled: !!user,
   });
 
+  // Exercises — used to look up each exercise's secondary_muscles so recovery
+  // fatigue is attributed to synergist muscles (e.g. bench → Triceps, Front Delt).
+  const { data: allExercises = [] } = useQuery({
+    queryKey: ["exercises"],
+    queryFn: () => base44.entities.Exercise.list(),
+    enabled: !!user,
+  });
+  const exerciseSecondaryMap = React.useMemo(() => {
+    const m = {};
+    allExercises.forEach(e => { m[e.id] = { secondary_muscles: e.secondary_muscles }; });
+    return m;
+  }, [allExercises]);
+
   const { data: bodyWeights = [] } = useQuery({
     queryKey: ["bodyWeights"],
     // Sort by measurement `date` (NOT created_date) so a backdated entry doesn't
@@ -235,7 +248,13 @@ export default function Profile() {
     refetchTrackers();
   };
 
-  const recoveryData = computeRecovery(workoutLogs);
+  // Recomputes live whenever WorkoutLogs refetch (e.g. right after finishing a
+  // workout) — naturally trends back to "Ready" as sessions age past the 7-day
+  // window without any manual reset.
+  const recoveryData = React.useMemo(
+    () => computeRecovery(workoutLogs, exerciseSecondaryMap),
+    [workoutLogs, exerciseSecondaryMap]
+  );
 
   // latestWeight stored in kg, display converts it
   const latestWeightKg = bodyWeights[0]?.weight;
