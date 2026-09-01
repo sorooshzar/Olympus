@@ -8,6 +8,7 @@ import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, getDay 
 import { motion, AnimatePresence } from "framer-motion";
 import { useWeightUnit } from "@/components/utils/useWeightUnit";
 import { RANKS } from "@/components/utils/rankEngine";
+import { useToast } from "@/components/ui/use-toast";
 
 function formatDuration(mins) {
   if (!mins) return "--";
@@ -241,6 +242,7 @@ function WorkoutDetailModal({ log, onClose, onDelete, onEdit, onDeleteExercise }
 export default function WorkoutHistory() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { unit: weightUnit, toDisplay } = useWeightUnit();
   const [selectedLog, setSelectedLog] = useState(null);
   const [dayLogs, setDayLogs] = useState(null);
@@ -262,16 +264,33 @@ export default function WorkoutHistory() {
     }
   };
 
-  const handleDelete = async (id) => {
-    // Delete the log, then cascade: rebuild this log's rank events (log is now
-    // gone → wipes all events sourced from it, recomputes displayed_rank).
-    await base44.entities.WorkoutLog.delete(id);
-    try {
-      await base44.functions.invoke("calculateRanks", { workoutLogId: id, rebuild: true });
-    } catch (e) { console.error("rank cascade failed", e); }
-    queryClient.invalidateQueries({ queryKey: ["workoutLogs"] });
-    queryClient.invalidateQueries({ queryKey: ["userMuscleRanks"] });
+  const handleDelete = (id) => {
+    // Optimistic delete: remove from the visible list instantly, then fire the
+    // API call in the background. Roll back + toast on failure.
+    const previousLogs = queryClient.getQueryData(["workoutLogs"]) || [];
+    queryClient.setQueryData(["workoutLogs"], previousLogs.filter((l) => l.id !== id));
     setSelectedLog(null);
+    setDeleteTarget(null);
+
+    (async () => {
+      try {
+        await base44.entities.WorkoutLog.delete(id);
+        try {
+          await base44.functions.invoke("calculateRanks", { workoutLogId: id, rebuild: true });
+        } catch (e) { console.error("rank cascade failed", e); }
+      } catch (e) {
+        console.error("delete failed", e);
+        queryClient.setQueryData(["workoutLogs"], previousLogs);
+        toast({
+          title: "Delete failed",
+          description: "The workout could not be deleted and has been restored.",
+          variant: "destructive",
+        });
+      } finally {
+        queryClient.invalidateQueries({ queryKey: ["workoutLogs"] });
+        queryClient.invalidateQueries({ queryKey: ["userMuscleRanks"] });
+      }
+    })();
   };
 
   const handleDeleteExercise = async (logId, exerciseIndex) => {
