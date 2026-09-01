@@ -248,12 +248,12 @@ export default function Profile() {
     refetchTrackers();
   };
 
-  // Recomputes live whenever WorkoutLogs refetch (e.g. right after finishing a
-  // workout) — naturally trends back to "Ready" as sessions age past the 7-day
-  // window without any manual reset.
+  // Recomputes live whenever WorkoutLogs refetch OR the Recovery view is toggled,
+  // using the current time as the reference point so muscles visibly decay toward
+  // "Ready" as sessions age past the 5-day recovery window.
   const recoveryData = React.useMemo(
     () => computeRecovery(workoutLogs, exerciseSecondaryMap),
-    [workoutLogs, exerciseSecondaryMap]
+    [workoutLogs, exerciseSecondaryMap, showRecovery]
   );
 
   // latestWeight stored in kg, display converts it

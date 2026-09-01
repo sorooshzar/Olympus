@@ -1,28 +1,13 @@
 /**
- * Science-based muscle recovery engine (SRA curve model)
- * 
- * Fatigue score per session = sum(reps × intensity_multiplier) per muscle
- * Decays exponentially with a half-life specific to each muscle group.
- * Multiple sessions accumulate. Recovery state mapped from remaining fatigue.
+ * Muscle recovery engine (linear time-decay model)
+ *
+ * Fatigue load per session = Σ(reps × intensity_multiplier) over working sets.
+ * Each session's load decays LINEARLY over 5 days (120h):
+ *   0h → 100%, 24h → 80%, 48h → 60%, 72h → 40%, 96h → 20%, 120h → 0%
+ * This ensures muscles naturally recover back to "Ready" (green) after ~5 days
+ * of no training, regardless of muscle group. Primary muscles get full load;
+ * secondary/synergist muscles get 0.5× load. Multiple sessions accumulate.
  */
-
-// Half-lives in hours — based on SRA research & Israetel volume work
-const HALF_LIVES = {
-  chest:      60,   // ~2.5 days
-  back:       72,   // ~3 days
-  lats:       72,
-  traps:      48,
-  shoulders:  36,   // ~1.5 days (smaller muscles, recover faster)
-  biceps:     48,
-  triceps:    48,
-  forearms:   24,
-  quads:      72,   // large compound — takes longest
-  hamstrings: 84,   // very demanding, prone to soreness
-  glutes:     84,
-  calves:     36,
-  abs:        36,
-  core:       36,
-};
 
 // RIR → relative intensity multiplier
 function rirToIntensity(rir) {
@@ -43,26 +28,11 @@ const THRESHOLDS = {
   sore:     45,
 };
 
-function getMuscleCategory(muscleGroup) {
-  if (!muscleGroup) return null;
-  const m = muscleGroup.toLowerCase();
-  if (m.includes('chest')) return 'chest';
-  if (m.includes('lat')) return 'lats';
-  if (m.includes('mid back') || m.includes('erector') || m.includes('trap')) return 'back';
-  if (m.includes('rear delt') || m.includes('front delt') || m.includes('side delt')) return 'shoulders';
-  if (m.includes('bicep') || m.includes('brachioradialis') || m.includes('wrist')) return 'forearms';
-  if (m.includes('tricep')) return 'triceps';
-  if (m.includes('quad') || m.includes('adduct') || m.includes('abduct')) return 'quads';
-  if (m.includes('hamstring')) return 'hamstrings';
-  if (m.includes('glute')) return 'glutes';
-  if (m.includes('calf') || m.includes('calve')) return 'calves';
-  if (m.includes('abs') || m.includes('oblique') || m.includes('core')) return 'abs';
-  return null;
-}
-
 export function computeRecovery(workoutLogs, exerciseMap = {}) {
   const now = Date.now();
-  const cutoff = now - 7 * 24 * 60 * 60 * 1000; // only look at last 7 days
+  // 120h (5 days) — the point at which linear decay reaches 0. Anything older
+  // contributes zero fatigue, so there's no need to scan further back.
+  const cutoff = now - 120 * 60 * 60 * 1000;
 
   // Accumulated decayed fatigue per muscle, keyed by the LOWERCASE muscle name
   // (e.g. "mid/low chest", "front delt", "triceps") — this is the exact key the
@@ -72,14 +42,11 @@ export function computeRecovery(workoutLogs, exerciseMap = {}) {
   const fatigue = {};
 
   // Apply a decayed fatigue load to a muscle, keyed by its lowercased name.
-  // Half-life comes from the muscle's broad category (chest/triceps/shoulders…).
+  // Linear decay: 100% at 0h → 80% at 24h → 60% at 48h → 40% at 72h → 20% at 96h → 0% at 120h.
   const applyFatigue = (muscleName, load, hoursAgo) => {
     if (!muscleName || !load) return;
     const key = muscleName.toLowerCase();
-    const category = getMuscleCategory(muscleName);
-    const halfLife = HALF_LIVES[category] || 48;
-    // Exponential decay: remaining = initial × e^(-ln2 × t / halfLife)
-    const decayFactor = Math.exp((-0.693 * hoursAgo) / halfLife);
+    const decayFactor = Math.max(0, 1 - hoursAgo / 120);
     fatigue[key] = (fatigue[key] || 0) + load * decayFactor;
   };
 
