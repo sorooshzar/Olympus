@@ -244,6 +244,7 @@ export default function WorkoutHistory() {
   const { unit: weightUnit, toDisplay } = useWeightUnit();
   const [selectedLog, setSelectedLog] = useState(null);
   const [dayLogs, setDayLogs] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { data: logs = [] } = useQuery({
     queryKey: ["workoutLogs"],
@@ -362,8 +363,9 @@ export default function WorkoutHistory() {
               <button onClick={() => setSelectedLog(log)} className="text-muted-foreground hover:text-foreground">
                 <ChevronRight className="w-4 h-4 flex-shrink-0" />
               </button>
-              <button onClick={() => { setSelectedLog(log); }}
-                className="text-muted-foreground hover:text-destructive transition-colors ml-1">
+              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setDeleteTarget(log); }}
+                className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+                aria-label="Delete workout">
                 <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
               </button>
             </div>
@@ -381,6 +383,26 @@ export default function WorkoutHistory() {
           />
         )}
       </AnimatePresence>
+
+      {/* List-row delete confirmation (does not enter the detail view) */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4 sm:items-center"
+          onClick={() => setDeleteTarget(null)}>
+          <div className="bg-card w-full max-w-sm rounded-2xl border border-border p-5 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            <div>
+              <h3 className="font-bold text-base">Delete this workout?</h3>
+              <p className="text-sm text-muted-foreground mt-1">"{deleteTarget.name}" will be permanently removed from your history, along with any muscle rank credit it gave. This cannot be undone.</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 rounded-xl bg-secondary text-sm font-semibold">Cancel</button>
+              <button onClick={() => { const id = deleteTarget.id; setDeleteTarget(null); handleDelete(id); }}
+                className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
