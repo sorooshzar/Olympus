@@ -8,11 +8,19 @@
         "stationary",
         "mobile"
       ],
-      "description": "Cardio type"
+      "description": "Cardio type (legacy alias of mode)"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "stationary",
+        "mobile"
+      ],
+      "description": "Session mode: stationary (indoor machine) or mobile (GPS outdoor)"
     },
     "activity": {
       "type": "string",
-      "description": "Activity name (treadmill, cycling, running...)"
+      "description": "Activity name (Treadmill (Run), Running, Cycling...)"
     },
     "date": {
       "type": "string",
@@ -27,10 +35,21 @@
       "format": "date-time"
     },
     "duration_seconds": {
-      "type": "number"
+      "type": "number",
+      "description": "Total elapsed duration in seconds (including paused time)"
+    },
+    "moving_time": {
+      "type": "number",
+      "description": "Moving time in seconds (excludes paused time). Only set for mobile sessions."
+    },
+    "pause_count": {
+      "type": "number",
+      "description": "Number of times the session was paused",
+      "default": 0
     },
     "distance": {
-      "type": "number"
+      "type": "number",
+      "description": "Total distance in kilometers (base unit)"
     },
     "distance_unit": {
       "type": "string",
@@ -40,11 +59,55 @@
       ],
       "default": "km"
     },
+    "route_points": {
+      "type": "array",
+      "description": "GPS track points for mobile sessions. Empty/null for stationary.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "splits": {
+      "type": "array",
+      "description": "Per-km (or per-mile) segment splits. Distances stored in km, pace in sec/km.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "distance": {
+            "type": "number",
+            "description": "Segment distance in km"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Segment duration in seconds"
+          },
+          "pace": {
+            "type": "number",
+            "description": "Pace in seconds per km"
+          },
+          "segment_index": {
+            "type": "number"
+          }
+        }
+      }
+    },
     "calories": {
       "type": "number"
     },
     "avg_pace": {
-      "type": "string"
+      "type": "string",
+      "description": "Average pace formatted string (e.g. '5:30 /km')"
     },
     "avg_heart_rate": {
       "type": "number"
