@@ -28,12 +28,11 @@ export default function RouteMapView({
   follow = false,
   fit = false,
   interactive = true,
+  color = "#2196F3",
   className = "",
 }) {
   const latlngs = points.map((p) => [p.lat, p.lng]);
-  const center = latlngs.length
-    ? latlngs[0]
-    : [0, 0];
+  const center = latlngs.length ? latlngs[0] : [0, 0];
 
   return (
     <MapContainer
@@ -58,14 +57,14 @@ export default function RouteMapView({
       {latlngs.length >= 2 && (
         <Polyline
           positions={latlngs}
-          pathOptions={{ color: "#3b82f6", weight: 4, opacity: 0.9, lineCap: "round" }}
+          pathOptions={{ color, weight: 4, opacity: 0.9, lineCap: "round" }}
         />
       )}
       {latlngs.length >= 1 && (
         <CircleMarker
           center={latlngs[latlngs.length - 1]}
           radius={6}
-          pathOptions={{ color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 1 }}
+          pathOptions={{ color, fillColor: color, fillOpacity: 1 }}
         />
       )}
       {latlngs.length >= 1 && (

@@ -9,6 +9,36 @@ import {
   MapPin,
 } from "lucide-react";
 
+// Per-activity-type color palette (Strava-inspired)
+export const ACTIVITY_COLORS = {
+  Running: "#FF5722",
+  "Trail Running": "#FF7043",
+  Jogging: "#FF5722",
+  "Treadmill (Run)": "#FF7043",
+  "Treadmill (Walk)": "#FF8A65",
+  Cycling: "#2196F3",
+  "Stationary Bike": "#42A5F5",
+  Swimming: "#00BCD4",
+  Walking: "#4CAF50",
+  Hiking: "#4CAF50",
+  "Stair Climber": "#FFC107",
+  Elliptical: "#AB47BC",
+  "Rowing Machine": "#5C6BC0",
+  "Arc Trainer": "#26A69A",
+  SkiErg: "#7E57C2",
+};
+
+const DEFAULT_ACTIVITY_COLOR = "#2196F3";
+
+export function getActivityColor(name) {
+  return ACTIVITY_COLORS[name] || DEFAULT_ACTIVITY_COLOR;
+}
+
+export const MODE_COLORS = {
+  mobile: "#FF5722",
+  stationary: "#2196F3",
+};
+
 // MET values for calorie estimation (calories = MET * kg * hours)
 export const MET = {
   "Treadmill (Run)": 9.8,

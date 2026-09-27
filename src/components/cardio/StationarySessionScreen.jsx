@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Pause, Square, Flame, Activity } from "lucide-react";
+import { Play, Pause, Square, Flame } from "lucide-react";
 import { haptic } from "@/components/utils/haptics";
 import { formatDuration, computeCalories } from "./cardioUtils";
-import { getMet, getActivityIcon, DISTANCE_CAPABLE } from "./cardioConfig";
+import { getMet, getActivityIcon, getActivityColor, DISTANCE_CAPABLE } from "./cardioConfig";
 import { useDistanceUnit } from "@/components/utils/useDistanceUnit";
 
 export default function StationarySessionScreen({ activity, userWeightKg, onEnd, onCancel }) {
   const Icon = getActivityIcon(activity);
+  const color = getActivityColor(activity);
   const met = getMet(activity);
   const weight = userWeightKg || 75;
   const { isMetric, label, toDisplay } = useDistanceUnit();
@@ -80,8 +81,11 @@ export default function StationarySessionScreen({ activity, userWeightKg, onEnd,
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 pt-6 pb-2">
-        <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <Icon className="w-6 h-6 text-primary" />
+        <div
+          className="w-11 h-11 rounded-2xl flex items-center justify-center"
+          style={{ background: `${color}1F` }}
+        >
+          <Icon className="w-6 h-6" style={{ color }} />
         </div>
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
@@ -99,18 +103,29 @@ export default function StationarySessionScreen({ activity, userWeightKg, onEnd,
 
       {/* Timer focal point */}
       <div className={`flex-1 flex flex-col items-center justify-center transition-opacity duration-300 ${running ? "opacity-100" : "opacity-50"}`}>
-        <div className="text-[15vw] sm:text-7xl font-mono font-bold tabular-nums tracking-tight leading-none">
-          {formatDuration(elapsed)}
+        <div className="relative flex items-center justify-center">
+          {running && (
+            <div
+              className="absolute w-56 h-56 rounded-full blur-3xl opacity-25 animate-pulse pointer-events-none"
+              style={{ background: color }}
+            />
+          )}
+          <div className="relative text-[15vw] sm:text-7xl font-mono font-bold tabular-nums tracking-tight leading-none text-white">
+            {formatDuration(elapsed)}
+          </div>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
           {running ? "Session running" : "Paused"}
         </p>
 
         {/* Live calories */}
-        <div className="flex items-center gap-2 mt-6 bg-secondary rounded-full px-4 py-2">
-          <Flame className="w-4 h-4 text-orange-400" />
-          <span className="text-sm font-bold tabular-nums">{liveCalories}</span>
-          <span className="text-xs text-muted-foreground">kcal</span>
+        <div
+          className="flex items-center gap-2 mt-6 rounded-full px-4 py-2"
+          style={{ background: "linear-gradient(135deg,#FF7043,#FF5722)" }}
+        >
+          <Flame className="w-4 h-4 text-white" />
+          <span className="text-sm font-bold tabular-nums text-white">{liveCalories}</span>
+          <span className="text-xs text-white/80">kcal</span>
         </div>
 
         {/* Optional distance input */}

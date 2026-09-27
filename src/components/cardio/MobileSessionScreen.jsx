@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Flame, MapPin, Navigation } from "lucide-react";
+import { Play, Pause, Square, Flame, MapPin } from "lucide-react";
 import { haptic } from "@/components/utils/haptics";
 import {
   formatDuration,
@@ -9,7 +9,7 @@ import {
   computeSplits,
   formatPace,
 } from "./cardioUtils";
-import { getMet, getActivityIcon } from "./cardioConfig";
+import { getMet, getActivityIcon, getActivityColor } from "./cardioConfig";
 import { useDistanceUnit } from "@/components/utils/useDistanceUnit";
 import RouteMapView from "./RouteMapView";
 
@@ -18,6 +18,7 @@ const MIN_POINT_DISTANCE_M = 5; // ...or 5m moved
 
 export default function MobileSessionScreen({ activity, userWeightKg, onEnd, onCancel }) {
   const Icon = getActivityIcon(activity);
+  const color = getActivityColor(activity);
   const met = getMet(activity);
   const weight = userWeightKg || 75;
   const { isMetric, label, toDisplay } = useDistanceUnit();
@@ -194,7 +195,7 @@ export default function MobileSessionScreen({ activity, userWeightKg, onEnd, onC
     <div className="relative h-full w-full overflow-hidden bg-black">
       {/* Map background */}
       <div className="absolute inset-0">
-        <RouteMapView points={routePoints} follow={running} interactive={false} />
+        <RouteMapView points={routePoints} follow={running} interactive={false} color={color} />
       </div>
 
       {/* Dim overlay when paused */}
@@ -204,7 +205,7 @@ export default function MobileSessionScreen({ activity, userWeightKg, onEnd, onC
       {(gpsStatus === "requesting" || gpsStatus === "denied" || gpsStatus === "unavailable") && (
         <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+0.75rem)] px-4 z-[500]">
           <div className="bg-card/90 backdrop-blur-md rounded-2xl border border-border p-4 flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
+            <MapPin className="w-5 h-5 flex-shrink-0" style={{ color }} />
             <div className="flex-1">
               <p className="text-sm font-semibold">
                 {gpsStatus === "requesting" && "Acquiring GPS signal…"}
@@ -236,8 +237,11 @@ export default function MobileSessionScreen({ activity, userWeightKg, onEnd, onC
       {/* Top header */}
       <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+0.75rem)] px-4 z-[400]">
         <div className="flex items-center gap-3 bg-card/80 backdrop-blur-md rounded-2xl border border-border p-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Icon className="w-5 h-5 text-primary" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: `${color}1F` }}
+          >
+            <Icon className="w-5 h-5" style={{ color }} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium leading-none">
@@ -258,10 +262,10 @@ export default function MobileSessionScreen({ activity, userWeightKg, onEnd, onC
       <div className="absolute left-3 right-3 top-[calc(env(safe-area-inset-top)+5.5rem)] z-[400]">
         <div className="bg-card/75 backdrop-blur-md rounded-2xl border border-border/70 p-3.5 grid grid-cols-3 gap-1">
           <StatCell label="Time" value={formatDuration(elapsed)} />
-          <StatCell label="Distance" value={`${toDisplay(distanceKm).toFixed(2)} ${label}`} />
-          <StatCell label="Calories" value={`${liveCalories}`} unit="kcal" accent />
-          <StatCell label="Pace" value={currentPaceSecKm ? formatPace(currentPaceSecKm, isMetric) : "--"} unit={`/${label}`} />
-          <StatCell label="Avg Pace" value={avgPaceSecKm ? formatPace(avgPaceSecKm, isMetric) : "--"} unit={`/${label}`} />
+          <StatCell label="Distance" value={`${toDisplay(distanceKm).toFixed(2)} ${label}`} color={color} />
+          <StatCell label="Calories" value={`${liveCalories}`} unit="kcal" color="#FF5722" />
+          <StatCell label="Pace" value={currentPaceSecKm ? formatPace(currentPaceSecKm, isMetric) : "--"} unit={`/${label}`} color={color} />
+          <StatCell label="Avg Pace" value={avgPaceSecKm ? formatPace(avgPaceSecKm, isMetric) : "--"} unit={`/${label}`} color={color} />
           <StatCell label="Moving" value={formatDuration(movingTime)} />
         </div>
       </div>
@@ -299,10 +303,10 @@ export default function MobileSessionScreen({ activity, userWeightKg, onEnd, onC
   );
 }
 
-function StatCell({ label, value, unit, accent }) {
+function StatCell({ label, value, unit, color }) {
   return (
     <div className="text-center">
-      <p className={`text-base font-bold tabular-nums leading-none ${accent ? "text-orange-400" : ""}`}>
+      <p className="text-base font-bold tabular-nums leading-none" style={color ? { color } : undefined}>
         {value}
         {unit && <span className="text-[10px] text-muted-foreground font-normal ml-0.5">{unit}</span>}
       </p>

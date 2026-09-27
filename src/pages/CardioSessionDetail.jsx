@@ -17,10 +17,9 @@ import {
 } from "lucide-react";
 import RouteMapView from "@/components/cardio/RouteMapView";
 import SplitsList from "@/components/cardio/SplitsList";
-import { getActivityIcon } from "@/components/cardio/cardioConfig";
+import { getActivityIcon, getActivityColor } from "@/components/cardio/cardioConfig";
 import {
   formatDuration,
-  formatTotalMins,
   formatPace,
   sessionDateTime,
 } from "@/components/cardio/cardioUtils";
@@ -91,6 +90,7 @@ export default function CardioSessionDetail() {
   }
 
   const Icon = getActivityIcon(log.activity);
+  const color = getActivityColor(log.activity);
   const isMobile = (log.mode || log.type) === "mobile";
   const distanceKm = log.distance;
   const avgPaceSecKm = (() => {
@@ -127,7 +127,10 @@ export default function CardioSessionDetail() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50">
+      <div
+        className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/50"
+        style={{ boxShadow: `inset 0 -1px 0 0 ${color}33` }}
+      >
         <div className="max-w-lg mx-auto px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 flex items-center gap-3">
           <button
             onClick={() => navigate("/Cardio")}
@@ -136,8 +139,11 @@ export default function CardioSessionDetail() {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Icon className="w-5 h-5 text-primary" />
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${color}1F` }}
+            >
+              <Icon className="w-5 h-5" style={{ color }} />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold leading-tight truncate">{log.activity}</h1>
@@ -150,8 +156,11 @@ export default function CardioSessionDetail() {
       <div className="max-w-lg mx-auto px-4 pb-32 space-y-5 pt-4">
         {/* Route map for mobile */}
         {isMobile && log.route_points && log.route_points.length > 0 && (
-          <div className="rounded-2xl overflow-hidden border border-border h-64">
-            <RouteMapView points={log.route_points} fit interactive />
+          <div
+            className="rounded-2xl overflow-hidden border border-border h-64 relative"
+            style={{ boxShadow: `0 0 0 1px ${color}22` }}
+          >
+            <RouteMapView points={log.route_points} fit interactive color={color} />
           </div>
         )}
 
@@ -160,9 +169,13 @@ export default function CardioSessionDetail() {
           {stats.map((s) => {
             const SIcon = s.icon;
             return (
-              <div key={s.label} className="bg-card rounded-xl border border-border p-4">
-                <SIcon className="w-4 h-4 text-primary mb-2" />
-                <p className="text-xl font-bold tabular-nums leading-none">
+              <div
+                key={s.label}
+                className="bg-card rounded-2xl border border-border p-4 relative overflow-hidden"
+              >
+                <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: color }} />
+                <SIcon className="w-4 h-4 mb-2" style={{ color }} />
+                <p className="text-xl font-bold tabular-nums leading-none" style={{ color }}>
                   {s.value}
                   {s.unit && (
                     <span className="text-xs text-muted-foreground font-normal ml-1">{s.unit}</span>
@@ -178,7 +191,7 @@ export default function CardioSessionDetail() {
         {isMobile && (
           <div>
             <h2 className="text-sm font-semibold mb-3">Splits</h2>
-            <SplitsList splits={log.splits} avgPaceSecKm={avgPaceSecKm} isMetric={isMetric} />
+            <SplitsList splits={log.splits} avgPaceSecKm={avgPaceSecKm} isMetric={isMetric} color={color} />
           </div>
         )}
 
@@ -227,11 +240,12 @@ export default function CardioSessionDetail() {
       {/* Delete confirm */}
       {confirmDelete && (
         <div
-          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setConfirmDelete(false)}
         >
           <div
             className="bg-card w-full max-w-sm rounded-2xl border border-border p-5 space-y-4"
+            style={{ borderRadius: 16, background: "#1E1E1E" }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-bold">Delete this session?</h3>
