@@ -45,6 +45,15 @@ export function formatTotalMins(mins) {
   return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`;
 }
 
+// Format total seconds as "Xs" (<60s), "Xm" (<60m), or "Xh Ym"
+export function formatTotalSeconds(seconds) {
+  if (!seconds) return "0m";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = seconds / 60;
+  if (mins < 60) return `${Math.round(mins)}m`;
+  return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`;
+}
+
 // Format pace seconds-per-km as "M:SS" with unit label
 export function formatPace(secPerKm, isMetric = true) {
   if (!secPerKm || !isFinite(secPerKm)) return "--";

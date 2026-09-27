@@ -103,28 +103,25 @@ export default function CardioSessionDetail() {
     return 0;
   })();
 
+  const hasDistance = distanceKm != null;
   const stats = [
-    { label: "Duration", value: formatDuration(log.duration_seconds), icon: Clock },
-    { label: "Calories", value: `${log.calories ?? 0}`, unit: "kcal", icon: Flame },
-  ];
-  if (distanceKm != null) {
-    stats.splice(1, 0, {
+    { label: "Duration", value: formatDuration(log.duration_seconds || 0), icon: Clock },
+    {
       label: "Distance",
-      value: `${toDisplay(distanceKm).toFixed(2)}`,
-      unit: label,
+      value: hasDistance ? `${toDisplay(distanceKm).toFixed(2)}` : "--",
+      unit: hasDistance ? label : null,
       icon: TrendingUp,
-    });
-  }
-  if (isMobile && log.moving_time != null) {
-    stats.push({ label: "Moving", value: formatDuration(log.moving_time), icon: Navigation });
-  }
-  if (distanceKm != null) {
-    stats.push({
+    },
+    { label: "Calories", value: `${log.calories ?? 0}`, unit: "kcal", icon: Flame },
+    {
       label: "Avg Pace",
       value: formatPace(avgPaceSecKm, isMetric),
       unit: `/${label}`,
       icon: Footprints,
-    });
+    },
+  ];
+  if (isMobile && log.moving_time != null) {
+    stats.push({ label: "Moving", value: formatDuration(log.moving_time), icon: Navigation });
   }
 
   return (

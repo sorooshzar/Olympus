@@ -16,7 +16,7 @@ import {
 import { format, startOfWeek, isWithinInterval } from "date-fns";
 import StartSessionModal from "@/components/cardio/StartSessionModal";
 import { getActivityIcon } from "@/components/cardio/cardioConfig";
-import { formatDuration, formatTotalMins } from "@/components/cardio/cardioUtils";
+import { formatDuration, formatTotalSeconds } from "@/components/cardio/cardioUtils";
 import { useDistanceUnit } from "@/components/utils/useDistanceUnit";
 import { userStorage } from "@/components/utils/userStorage";
 
@@ -58,12 +58,10 @@ export default function Cardio() {
   });
 
   const weekSeconds = weekLogs.reduce((s, l) => s + (l.duration_seconds || 0), 0);
-  const weekMins = Math.round(weekSeconds / 60);
   const weekDistKm = weekLogs.reduce((s, l) => s + (l.distance || 0), 0);
   const weekCal = weekLogs.reduce((s, l) => s + (l.calories || 0), 0);
 
   const allSeconds = logs.reduce((s, l) => s + (l.duration_seconds || 0), 0);
-  const allMins = Math.round(allSeconds / 60);
   const allDistKm = logs.reduce((s, l) => s + (l.distance || 0), 0);
 
   return (
@@ -83,7 +81,7 @@ export default function Cardio() {
             value={`${toDisplay(weekDistKm).toFixed(1)}`}
             unit={label}
           />
-          <StatTile icon={Clock} label="Total Time" value={formatTotalMins(weekMins)} />
+          <StatTile icon={Clock} label="Total Time" value={formatTotalSeconds(weekSeconds)} />
           <StatTile
             icon={Flame}
             label="Calories"
@@ -103,16 +101,18 @@ export default function Cardio() {
           <StatTile
             icon={TrendingUp}
             label="Distance"
-            value={toDisplay(allDistKm).toFixed(0)}
+            value={toDisplay(allDistKm).toFixed(1)}
             unit={label}
           />
-          <StatTile icon={Clock} label="Time" value={formatTotalMins(allMins)} />
+          <StatTile icon={Clock} label="Time" value={formatTotalSeconds(allSeconds)} />
         </div>
       </div>
 
       {/* Recent sessions */}
       <div>
-        <h2 className="text-sm font-semibold mb-3">Recent Sessions</h2>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2.5">
+          Recent Sessions
+        </p>
         {isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -156,7 +156,7 @@ export default function Cardio() {
 
 function StatTile({ icon: Icon, label, value, unit }) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
+    <div className="bg-card rounded-xl border border-border p-4 min-h-[68px] flex items-center gap-3">
       <Icon className="w-5 h-5 text-primary flex-shrink-0" />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground leading-none">{label}</p>
@@ -183,7 +183,7 @@ function SessionRow({ log, onClick }) {
       <div className="flex-1 min-w-0 text-left">
         <p className="text-sm font-semibold truncate">{log.activity}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {log.date ? format(new Date(log.date), "MMM d") : ""} ·{" "}
+          {format(new Date(log.started_at || log.date), "MMM d")} ·{" "}
           {log.duration_seconds ? formatDuration(log.duration_seconds) : "--"}
           {log.distance ? ` · ${log.distance.toFixed(1)}km` : ""}
           {log.calories ? ` · ${log.calories} kcal` : ""}
