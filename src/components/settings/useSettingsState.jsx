@@ -93,6 +93,7 @@ export function useSettingsState() {
 
   const handleDistanceUnit = (v) => {
     save("gym-distance-unit", v, setDistanceUnit);
+    window.dispatchEvent(new CustomEvent("distanceUnitChanged", { detail: { unit: v } }));
     base44.auth.updateMe({ distance_unit: v }).catch(() => {});
   };
 

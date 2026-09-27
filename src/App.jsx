@@ -8,6 +8,8 @@ import { AuthProvider } from '@/lib/AuthContext';
 import OnboardingGate from '@/components/onboarding/OnboardingGate';
 import FoodPreview from '@/pages/FoodPreview';
 import ExerciseSelector from '@/pages/ExerciseSelector';
+import CardioSession from '@/pages/CardioSession';
+import CardioSessionDetail from '@/pages/CardioSessionDetail';
 import Friends from '@/pages/Friends';
 import SettingsAppearance from '@/pages/settings/SettingsAppearance';
 import SettingsUnits from '@/pages/settings/SettingsUnits';
@@ -61,6 +63,16 @@ const AuthenticatedApp = () => {
               <LayoutWrapper currentPageName="ExerciseSelector">
                 <ExerciseSelector />
               </LayoutWrapper>
+            </RouteContent>
+          } />
+          <Route path="/CardioSession" element={
+            <RouteContent pageKey="/CardioSession">
+              <CardioSession />
+            </RouteContent>
+          } />
+          <Route path="/CardioSessionDetail" element={
+            <RouteContent pageKey="/CardioSessionDetail">
+              <CardioSessionDetail />
             </RouteContent>
           } />
           <Route path="/FoodPreview" element={
